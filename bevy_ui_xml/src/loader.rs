@@ -21,8 +21,8 @@ pub(crate) struct ParsedTree {
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct Functions {
-    pub(crate) on_spawn_fn: Option<String>,
-    pub(crate) on_released_fn: Option<String>,
+    pub(crate) on_spawn: Option<String>,
+    pub(crate) on_click: Option<String>,
 }
 
 impl Clone for ParsedTree {
@@ -102,16 +102,16 @@ impl UiLayoutLoader {
                 let value = resources.get(property);
                 match attribute.name() {
                     "id"         => container.id = Some(value.unwrap().clone()),
-                    "on_spawn"   => container.functions.on_spawn_fn = Some(value.unwrap().clone()),
-                    "on_release" => container.functions.on_released_fn = Some(value.unwrap().clone()),
+                    "on_spawn"   => container.functions.on_spawn = Some(value.unwrap().clone()),
+                    "on_click" => container.functions.on_click = Some(value.unwrap().clone()),
                     _ => error!("[Container] Unknown attribute: {}", attribute.name()),
                 }
             }
             else {
                 match attribute.name() {
                     "id"         => container.id = Some(value.to_string()),
-                    "on_spawn"   => container.functions.on_spawn_fn = Some(value.to_string()),
-                    "on_release" => container.functions.on_released_fn = Some(value.to_string()),
+                    "on_spawn"   => container.functions.on_spawn = Some(value.to_string()),
+                    "on_click" => container.functions.on_click = Some(value.to_string()),
                     _ => error!("[Container] Unknown attribute: {}", attribute.name()),
                 }
             }

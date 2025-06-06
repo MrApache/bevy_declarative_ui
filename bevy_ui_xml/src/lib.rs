@@ -30,8 +30,12 @@ pub mod prelude {
     pub use crate::raw_handle::RawHandle;
     pub use crate::UiLayout;
     pub use crate::UiDocumentTemplate;
-    pub use crate::commands::UiDocument;
-    pub use crate::commands::UiFunctionRegistry;
+    pub use crate::commands::{
+        UiDocument,
+        UiFunctionRegistry,
+        UiFunctions,
+        UiOnClickFn,
+    };
 }
 
 #[derive(Asset, TypePath, Debug)]

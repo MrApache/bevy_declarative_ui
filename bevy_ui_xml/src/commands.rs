@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use bevy::ecs::component::Mutable;
 use bevy::ecs::system::{SystemId, SystemParam};
+use bevy::image::ImageLoaderError;
 use bevy::prelude::*;
 use crate::loader::ParsedTree;
 use crate::{UiDocumentTemplate, UiLayout};
@@ -99,14 +100,14 @@ pub(crate) fn spawn_layout(
 
     let functions = &tree.functions;
 
-    if let Some(on_spawn) = &functions.on_spawn_fn {
+    if let Some(on_spawn) = &functions.on_spawn {
         entity.insert(UiSpawnFnReq {
             fn_name: on_spawn.clone(),
         });
     }
 
-    if let Some(on_release) = &functions.on_released_fn {
-        entity.insert(UiOnReleaseFnReq {
+    if let Some(on_release) = &functions.on_click {
+        entity.insert(UiOnClickFn {
             fn_name: on_release.clone(),
         });
     }
@@ -219,7 +220,7 @@ impl<'w, 's> UiFunctionRegistry<'w, 's> {
 }
 
 #[derive(Resource, Default)]
-pub(crate) struct UiFunctions {
+pub struct UiFunctions {
     map: HashMap<String, SystemId<In<Entity>>>,
 }
 
@@ -244,8 +245,14 @@ pub(crate) struct UiSpawnFnReq {
 }
 
 #[derive(Component)]
-pub(crate) struct UiOnReleaseFnReq {
+pub struct UiOnClickFn {
     fn_name: String,
+}
+
+impl UiOnClickFn {
+    pub fn name(&self) -> &String {
+        &self.fn_name
+    }
 }
 
 pub(crate) fn observe_on_spawn(
@@ -258,23 +265,3 @@ pub(crate) fn observe_on_spawn(
         cmd.entity(entity).remove::<UiSpawnFnReq>();
     });
 }
-
-/*
-pub(crate) fn observe_interaction(
-    mut cmd: Commands,
-    interactions: Query<(Entity, &AdvancedInteraction), Changed<AdvancedInteraction>>,
-    functions: Res<UiFunctions>,
-    on_release: Query<&UiOnReleaseFnReq>,
-){
-    interactions.iter().for_each(|(entity, interaction)|{
-        match interaction {
-            AdvancedInteraction::Released => {
-                if let Ok(x) = on_release.get(entity) {
-                    functions.maybe_run(&x.fn_name, entity, &mut cmd);
-                }
-            }
-            _ => {}
-        }
-    });
-}
-*/
