@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::asset::io::Reader;
 use bevy::log::error;
-use bevy::prelude::Resource;
+use bevy::prelude::{Deref, DerefMut, Resource};
 use roxmltree::{Document, NodeType};
 use thiserror::Error;
 use crate::base::add_base;
@@ -53,7 +53,6 @@ pub enum UiLayoutLoaderError {
 #[derive(Debug)]
 pub(crate) struct UiTemplate {
     pub(crate) root: ParsedTree,
-    pub(crate) properties: HashSet<String>,
 }
 
 #[derive(Resource)]
@@ -61,27 +60,20 @@ pub struct UiLayoutLoader {
     pub(crate) components: HashMap<&'static str, XmlComponentFactory>,
 }
 
+#[derive(Default, Deref, DerefMut)]
+struct Resources(HashMap<String, String>);
+
 impl UiLayoutLoader {
     pub fn add_component(&mut self, name: &'static str, factory: XmlComponentFactory) {
         self.components.insert(name, factory);
     }
 
-    fn is_template(&self, node: &roxmltree::Node) -> bool {
-        node.tag_name().name() == "Template"
-    }
-
-    fn parse_template(&self, root: roxmltree::Node) -> (String, UiTemplate) {
+    fn parse_template(&self, root: roxmltree::Node, resources: &Resources) -> (String, UiTemplate) {
         let name = root.attribute("name").expect("[Ui Layout Template] Template does not have a name").to_owned();
-        let mut properties: HashSet<String> = HashSet::new();
 
         let mut iter = root.children();
         while let Some(val) = iter.next() {
-            let tag: &str = val.tag_name().name();
-            if tag == "Property" {
-                properties.insert(val.text().unwrap().to_string());
-                continue;
-            }
-            else if val.node_type() != NodeType::Element {
+            if val.node_type() != NodeType::Element {
                 continue;
             }
 
@@ -89,8 +81,7 @@ impl UiLayoutLoader {
         }
 
         (name, UiTemplate {
-            root: self.parse_tree(root),
-            properties,
+            root: self.parse_tree(root, resources),
         })
     }
 
@@ -102,31 +93,52 @@ impl UiLayoutLoader {
         self.components.get(tag).unwrap()()
     }
 
-    fn parse_container(&self, node: roxmltree::Node) -> ParsedTree {
-        let mut container = self.parse_tree(node);
+    fn parse_container(&self, node: roxmltree::Node, resources: &Resources) -> ParsedTree {
+        let mut container = self.parse_tree(node, resources);
         for attribute in node.attributes() {
             let value = attribute.value();
-            match attribute.name() {
-                "id"         => container.id = Some(value.to_string()),
-                "on_spawn"   => container.functions.on_spawn_fn = Some(value.to_string()),
-                "on_release" => container.functions.on_released_fn = Some(value.to_string()),
-                _ => error!("[Container] Unknown attribute: {}", attribute.name()),
+            if is_property(value) {
+                let property = extract_property_name(value).unwrap();
+                let value = resources.get(property);
+                match attribute.name() {
+                    "id"         => container.id = Some(value.unwrap().clone()),
+                    "on_spawn"   => container.functions.on_spawn_fn = Some(value.unwrap().clone()),
+                    "on_release" => container.functions.on_released_fn = Some(value.unwrap().clone()),
+                    _ => error!("[Container] Unknown attribute: {}", attribute.name()),
+                }
+            }
+            else {
+                match attribute.name() {
+                    "id"         => container.id = Some(value.to_string()),
+                    "on_spawn"   => container.functions.on_spawn_fn = Some(value.to_string()),
+                    "on_release" => container.functions.on_released_fn = Some(value.to_string()),
+                    _ => error!("[Container] Unknown attribute: {}", attribute.name()),
+                }
             }
         }
 
         container
     }
 
-    fn parse_component(&self, node: roxmltree::Node, properties: &mut Vec<AttributeProperty>) -> Box<dyn XmlComponent> {
+    fn parse_component(&self, node: roxmltree::Node, properties: &mut Vec<AttributeProperty>, resources: &Resources) -> Box<dyn XmlComponent> {
         let name: &str = node.tag_name().name();
         let mut component = self.get_component(name);
         for attribute in node.attributes() {
             if is_property(attribute.value()) {
-                properties.push(AttributeProperty {
-                    attribute: attribute.name().to_string(),
-                    property: extract_property_name(attribute.value())
-                        .expect(&format!("[{}] Empty property name", name)).to_string()
-                });
+                let property = extract_property_name(attribute.value())
+                    .expect(&format!("[{}] Empty property name", name)).to_string();
+
+                if resources.contains_key(&property) {
+                    if !component.parse_attribute(attribute.name(), resources.get(&property).unwrap()) {
+                        error!("[{}] Unknown attribute: {}", name, attribute.name());
+                    }
+                }
+                else {
+                    properties.push(AttributeProperty {
+                        attribute: attribute.name().to_string(),
+                        property
+                    });
+                }
                 continue;
             }
 
@@ -138,7 +150,7 @@ impl UiLayoutLoader {
         component
     }
 
-    fn parse_tree(&self, root: roxmltree::Node) -> ParsedTree {
+    fn parse_tree(&self, root: roxmltree::Node, resources: &Resources) -> ParsedTree {
         let mut tree: ParsedTree = ParsedTree {
             components: vec![],
             containers: vec![],
@@ -152,12 +164,38 @@ impl UiLayoutLoader {
             match name {
                 "Template" => {},
                 "Property" => {},
-                "Container" => tree.containers.push(self.parse_container(root_child)),
-                _ => tree.components.push(self.parse_component(root_child, &mut tree.properties)),
+                "Resources" => {},
+                "Container" => tree.containers.push(self.parse_container(root_child, &resources)),
+                _ => tree.components.push(self.parse_component(root_child, &mut tree.properties, &resources)),
             }
         });
 
         tree
+    }
+
+    fn parse_resources(&self, root: roxmltree::Node) -> Resources {
+        let mut resources: HashMap<String, String> = HashMap::new();
+
+        root.children().filter(|n| n.is_element()).for_each(|child| {
+            match child.tag_name().name() {
+                "Property" => {
+                    let Some(name) = child.attribute("name") else {
+                        error!("[Ui Layout] Property must have a name");
+                        return;
+                    };
+
+                    let Some(value) = child.attribute("value") else {
+                        error!("[Ui Layout] Property must have a value");
+                        return;
+                    };
+
+                    resources.insert(name.to_string(), value.to_string());
+                }
+                other => error!("[Ui Layout]: unknown resource tag {}", other),
+            }
+        });
+
+        Resources(resources)
     }
 
     fn parse_layout(&self, doc: Document) -> UiLayout {
@@ -168,12 +206,22 @@ impl UiLayoutLoader {
         }
 
         let mut templates: HashMap<String, UiTemplate> = HashMap::new();
+        let mut resources: Resources = Resources::default();
 
         for children in root.children().filter(|child| child.is_element()) {
-            if self.is_template(&children) {
-                let (name, template) = self.parse_template(children);
-                templates.insert(name, template);
-                continue;
+            match children.tag_name().name() {
+                "Template" => {
+                    let (name, template) = self.parse_template(children, &resources);
+                    templates.insert(name, template);
+                },
+                "Resources" => {
+                    if !resources.is_empty() {
+                        error!("[Ui Layout] Multiple resources tag");
+                        continue;
+                    }
+                    resources = self.parse_resources(children);
+                },
+                _ => break
             }
         }
 
@@ -182,7 +230,7 @@ impl UiLayoutLoader {
         }
 
         UiLayout {
-            root: self.parse_tree(root),
+            root: self.parse_tree(root, &resources),
             templates,
         }
     }

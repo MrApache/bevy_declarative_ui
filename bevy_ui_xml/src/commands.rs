@@ -259,7 +259,8 @@ pub(crate) fn observe_on_spawn(
     });
 }
 
-/*pub(crate) fn observe_interaction(
+/*
+pub(crate) fn observe_interaction(
     mut cmd: Commands,
     interactions: Query<(Entity, &AdvancedInteraction), Changed<AdvancedInteraction>>,
     functions: Res<UiFunctions>,
