@@ -9,7 +9,7 @@ use crate::{UiLayout, XmlLibrary};
 struct Resources(HashMap<String, String>);
 
 struct ParsingContext<'a> {
-    components: &'a XmlLibrary,
+    library: &'a XmlLibrary,
     resources: &'a Resources,
     root: roxmltree::Node<'a, 'a>,
 }
@@ -51,34 +51,37 @@ fn parse_template(ctx: &ParsingContext) -> (String, UiTemplate) {
 
 fn parse_container(ctx: &ParsingContext) -> ParsedTree {
     let mut container = parse_tree(ctx);
+
     for attribute in ctx.root.attributes() {
-        let value = attribute.value();
-        if is_property(value) {
-            let property = extract_property_name(value).unwrap();
-            let value = ctx.resources.get(property);
-            match attribute.name() {
-                "id"       => container.id = Some(value.unwrap().clone()),
-                "on_spawn" => container.functions.on_spawn = Some(value.unwrap().clone()),
-                "on_click" => container.functions.on_click = Some(value.unwrap().clone()),
-                _ => error!("[Container] Unknown attribute: {}", attribute.name()),
-            }
+        let raw_value = attribute.value();
+
+        let resolved_value = if is_property(raw_value) {
+            let property = extract_property_name(raw_value).unwrap();
+            ctx.resources.get(property).unwrap().clone()
+        } else {
+            raw_value.to_string()
+        };
+
+        let name: &str = attribute.name();
+
+        if name == "id" {
+            container.id = Some(resolved_value);
+        }
+        else if ctx.library.functions.contains_key(name) {
+            container.functions.insert(name.to_string(), resolved_value);
         }
         else {
-            match attribute.name() {
-                "id"       => container.id = Some(value.to_string()),
-                "on_spawn" => container.functions.on_spawn = Some(value.to_string()),
-                "on_click" => container.functions.on_click = Some(value.to_string()),
-                _ => error!("[Container] Unknown attribute: {}", attribute.name()),
-            }
+            error!("[Container] Unknown attribute: {}", name);
         }
     }
 
     container
 }
 
+
 fn parse_component(ctx: &ParsingContext, properties: &mut Vec<AttributeProperty>) -> Box<dyn XmlComponent> {
     let name: &str = ctx.root.tag_name().name();
-    let mut component = ctx.components.get_component(name);
+    let mut component = ctx.library.get_component(name);
     for attribute in ctx.root.attributes() {
         if is_property(attribute.value()) {
             let property = extract_property_name(attribute.value())
@@ -119,7 +122,7 @@ fn parse_tree(ctx: &ParsingContext) -> ParsedTree {
     ctx.root.children().filter(|n| n.is_element()).for_each(|root_child| {
         let name = root_child.tag_name().name();
         let ctx = ParsingContext {
-            components: ctx.components,
+            library: ctx.library,
             resources: ctx.resources,
             root: root_child,
         };
@@ -173,7 +176,7 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
 
     for children in root.children().filter(|child| child.is_element()) {
         let ctx = ParsingContext {
-            components,
+            library: components,
             resources: &resources,
             root: children,
         };
@@ -198,7 +201,7 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
     }
 
     let ctx = ParsingContext {
-        components,
+        library: components,
         resources: &resources,
         root,
     };

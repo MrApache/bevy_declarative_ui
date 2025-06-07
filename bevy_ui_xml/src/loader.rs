@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::asset::io::Reader;
 use bevy::prelude::*;
@@ -9,14 +10,12 @@ pub(crate) struct ParsedTree {
     pub(crate) components: Vec<Box<dyn XmlComponent>>,
     pub(crate) containers: Vec<ParsedTree>,
     pub(crate) properties: Vec<AttributeProperty>,
-    pub(crate) functions:  Functions,
+    pub(crate) functions:  HashMap<String, String>,
     pub(crate) id: Option<String>,
 }
 
-#[derive(Default, Debug, Clone)]
-pub(crate) struct Functions {
-    pub(crate) on_spawn: Option<String>,
-    pub(crate) on_click: Option<String>,
+pub trait AttributeFunction: Sync + Send + 'static {
+    fn insert_function_tag(&self, value: &str, entity: &mut EntityCommands);
 }
 
 impl Clone for ParsedTree {

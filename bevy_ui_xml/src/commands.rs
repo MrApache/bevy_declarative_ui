@@ -3,7 +3,7 @@ use bevy::ecs::system::{SystemId, SystemParam};
 use bevy::prelude::*;
 use crate::loader::{ParsedTree, XmlAsset};
 use crate::parser::Layouts;
-use crate::UiDocumentTemplate;
+use crate::{UiDocumentTemplate, XmlLibrary};
 
 #[derive(Component, Clone)]
 pub struct UiDocument {
@@ -27,6 +27,7 @@ pub(crate) fn hot_reload(
     mut events:   EventReader<AssetEvent<XmlAsset>>,
     documents:    Query<(Entity, &UiDocument)>,
     layouts:      Res<Layouts>,
+    library:      Res<XmlLibrary>,
     children:     Query<&Children>,
     server:       Res<AssetServer>,
 ) {
@@ -55,7 +56,7 @@ pub(crate) fn hot_reload(
 
             if layouts.contains_key(&aa.handle.id()) {
                 let mut entity: EntityCommands = commands.entity(e);
-                spawn_layout(&mut entity, &layouts.get(&aa.handle.id()).unwrap().root, &server);
+                spawn_layout(&mut entity, &layouts.get(&aa.handle.id()).unwrap().root, &server, &library);
             }
             else {
                 panic!("??");
@@ -69,20 +70,22 @@ pub(crate) fn spawn_command(
     documents:    Query<(Entity, &UiDocument), Without<UiDocumentPrepared>>,
     layouts:      Res<Layouts>,
     server:       Res<AssetServer>,
+    library:      Res<XmlLibrary>,
 ) {
     for (e, document) in documents.iter() {
         if layouts.contains_key(&document.handle.id()) {
             let mut entity = commands.entity(e);
-            spawn_layout(&mut entity, &layouts.get(&document.handle.id()).unwrap().root, &server);
+            spawn_layout(&mut entity, &layouts.get(&document.handle.id()).unwrap().root, &server, &library);
             commands.entity(e).insert(UiDocumentPrepared);
         }
     }
 }
 
 pub(crate) fn spawn_layout(
-    entity: &mut EntityCommands,
-    tree:   &ParsedTree,
-    server: &AssetServer,
+    entity:  &mut EntityCommands,
+    tree:    &ParsedTree,
+    server:  &AssetServer,
+    library: &XmlLibrary,
 ) {
     tree.components.iter().for_each(|c| {
         c.insert_to(entity, server);
@@ -94,16 +97,9 @@ pub(crate) fn spawn_layout(
 
     let functions = &tree.functions;
 
-    if let Some(on_spawn) = &functions.on_spawn {
-        entity.insert(UiSpawnFnReq {
-            fn_name: on_spawn.clone(),
-        });
-    }
-
-    if let Some(on_release) = &functions.on_click {
-        entity.insert(UiOnClickFn {
-            fn_name: on_release.clone(),
-        });
+    for (name, value) in functions {
+        let factory = library.functions.get(name.as_str()).unwrap();
+        factory.insert_function_tag(value, entity);
     }
 
     if tree.containers.is_empty() {
@@ -114,7 +110,7 @@ pub(crate) fn spawn_layout(
     let mut commands = entity.commands();
     for container in &tree.containers {
         let mut children = commands.spawn_empty();
-        spawn_layout(&mut children, &container, server);
+        spawn_layout(&mut children, &container, server, library);
         children.insert(ChildOf(parent));
     }
 }
@@ -127,6 +123,7 @@ pub(crate) fn spawn_template(
     mut templates: Query<(Entity, &UiDocumentTemplate), Without<UiTemplatePrepared>>,
     mut query:     Query<(Entity, &UiId)>,
     layouts:       Res<Layouts>,
+    library:       Res<XmlLibrary>,
     server:        Res<AssetServer>,
 ) {
     templates.iter_mut().for_each(|(tmp, template)| {
@@ -142,7 +139,7 @@ pub(crate) fn spawn_template(
                 set_properties(&mut tree, &template.properties);
 
                 let mut c_commands = commands.entity(c);
-                spawn_layout(&mut c_commands, &tree, &server);
+                spawn_layout(&mut c_commands, &tree, &server, &library);
 
                 let mut tmp_commands = commands.entity(tmp);
                 tmp_commands.despawn();
@@ -201,31 +198,4 @@ impl UiFunctions {
             })
             .unwrap_or_else(|| warn!("function `{key}` is not bound"));
     }
-}
-
-#[derive(Component)]
-pub(crate) struct UiSpawnFnReq {
-    fn_name: String,
-}
-
-#[derive(Component)]
-pub struct UiOnClickFn {
-    fn_name: String,
-}
-
-impl UiOnClickFn {
-    pub fn name(&self) -> &String {
-        &self.fn_name
-    }
-}
-
-pub(crate) fn observe_on_spawn(
-    mut cmd:           Commands,
-    function_bindings: Res<UiFunctions>,
-    on_spawn:          Query<(Entity, &UiSpawnFnReq), Added<UiSpawnFnReq>>,
-) {
-    on_spawn.iter().for_each(|(entity, req)| {
-        function_bindings.maybe_run(&req.fn_name, entity, &mut cmd);
-        cmd.entity(entity).remove::<UiSpawnFnReq>();
-    });
 }

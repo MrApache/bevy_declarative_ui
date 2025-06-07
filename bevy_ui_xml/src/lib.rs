@@ -12,11 +12,16 @@ mod bundles;
 mod base;
 mod parser;
 
-use crate::loader::{ParsedTree, UiTemplate, UiXmlLoader, XmlAsset};
+use crate::loader::{
+    AttributeFunction,
+    ParsedTree,
+    UiTemplate,
+    UiXmlLoader,
+    XmlAsset
+};
+
 use crate::commands::{
     hot_reload,
-    //observe_interaction,
-    observe_on_spawn,
     spawn_command,
     spawn_template,
     UiFunctions,
@@ -26,7 +31,10 @@ use crate::parser::{parse_xml, Layouts};
 use crate::prelude::{XmlComponent, XmlComponentFactory};
 
 pub mod prelude {
-    pub use crate::loader::UiXmlLoader;
+    pub use crate::loader::{
+        UiXmlLoader,
+        AttributeFunction,
+    };
     pub use crate::xml_component::*;
     pub use crate::loader::XmlAsset;
 
@@ -40,7 +48,6 @@ pub mod prelude {
         UiDocument,
         UiFunctionRegistry,
         UiFunctions,
-        UiOnClickFn,
     };
 }
 
@@ -60,13 +67,15 @@ pub struct UiDocumentTemplate {
 
 #[derive(Resource)]
 pub struct XmlLibrary {
-    factories: HashMap<&'static str, XmlComponentFactory>
+    factories: HashMap<&'static str, XmlComponentFactory>,
+    functions: HashMap<&'static str, Box<dyn AttributeFunction>>,
 }
 
 impl Default for XmlLibrary {
     fn default() -> Self {
         let mut loader = XmlLibrary {
             factories: HashMap::new(),
+            functions: HashMap::new()
         };
 
         add_base(&mut loader);
@@ -79,6 +88,10 @@ impl Default for XmlLibrary {
 impl XmlLibrary {
     pub fn add_component(&mut self, name: &'static str, factory: XmlComponentFactory) {
         self.factories.insert(name, factory);
+    }
+
+    pub fn add_function<T: AttributeFunction>(&mut self, name: &'static str, factory: T) {
+        self.functions.insert(name, Box::new(factory));
     }
 
     pub(crate) fn get_component(&self, tag: &str) -> Box<dyn XmlComponent> {
@@ -105,7 +118,6 @@ impl Plugin for UiXmlPlugin {
             hot_reload,
             spawn_command,
             spawn_template,
-            observe_on_spawn
         ));
     }
 }
