@@ -1,12 +1,38 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
+use bevy::reflect::Array;
 use roxmltree::{Document, NodeType};
 use crate::loader::{AttributeProperty, ParsedTree, UiTemplate, XmlAsset};
 use crate::prelude::XmlComponent;
 use crate::{UiLayout, XmlLibrary};
 
-#[derive(Default, Deref, DerefMut)]
-struct Resources(HashMap<String, String>);
+#[derive(Debug, Default, Deref, DerefMut)]
+pub struct Resources(HashMap<String, String>);
+
+#[macro_export]
+macro_rules! res {
+    ( $( ($key:expr, $value:expr) ),* $(,)? ) => {
+        {
+            bevy_ui_xml::prelude::Resources::with([ $( ($key, $value) ),* ])
+        }
+    };
+}
+
+
+impl Resources {
+    pub fn insert(&mut self, name: &str, value: &str) {
+        self.0.insert(name.to_string(), value.to_string());
+    }
+
+    pub fn with<const N: usize>(pairs:[(&str, &str); N]) -> Self {
+        let mut instance = Self { 0: Default::default() };
+        for (name, value) in pairs {
+            instance.insert(name, value);
+        }
+
+        instance
+    }
+}
 
 struct ParsingContext<'a> {
     library: &'a XmlLibrary,
@@ -57,7 +83,18 @@ fn parse_container(ctx: &ParsingContext) -> ParsedTree {
 
         let resolved_value = if is_property(raw_value) {
             let property = extract_property_name(raw_value).unwrap();
-            ctx.resources.get(property).unwrap().clone()
+
+            if ctx.resources.contains_key(property) {
+                ctx.resources.get(property).unwrap().clone()
+            }
+            else {
+                container.container_properties.insert(
+                    attribute.name().to_string(),
+                    property.to_string()
+                );
+                continue;
+            }
+
         } else {
             raw_value.to_string()
         };
@@ -115,6 +152,7 @@ fn parse_tree(ctx: &ParsingContext) -> ParsedTree {
         components: vec![],
         containers: vec![],
         properties: vec![],
+        container_properties: HashMap::new(),
         functions: Default::default(),
         id: None,
     };
@@ -209,6 +247,7 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
     UiLayout {
         root: parse_tree(&ctx),
         templates,
+        resources
     }
 }
 

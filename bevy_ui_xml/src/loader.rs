@@ -8,8 +8,11 @@ use crate::xml_component::XmlComponent;
 #[derive(Debug)]
 pub(crate) struct ParsedTree {
     pub(crate) components: Vec<Box<dyn XmlComponent>>,
-    pub(crate) containers: Vec<ParsedTree>,
     pub(crate) properties: Vec<AttributeProperty>,
+
+    pub(crate) containers: Vec<ParsedTree>,
+    pub(crate) container_properties: HashMap<String, String>,
+
     pub(crate) functions:  HashMap<String, String>,
     pub(crate) id: Option<String>,
 }
@@ -24,6 +27,7 @@ impl Clone for ParsedTree {
             components: self.components.iter().map(|c| dyn_clone::clone_box(&**c)).collect::<Vec<_>>(),
             containers: self.containers.clone(),
             properties: self.properties.clone(),
+            container_properties: self.container_properties.clone(),
             functions:  self.functions.clone(),
             id: self.id.clone(),
         }

@@ -27,10 +27,11 @@ use crate::commands::{
     UiFunctions,
     UiId
 };
-use crate::parser::{parse_xml, Layouts};
+use crate::parser::{parse_xml, Layouts, Resources};
 use crate::prelude::{XmlComponent, XmlComponentFactory};
 
 pub mod prelude {
+    pub use crate::parser::Resources;
     pub use crate::loader::{
         UiXmlLoader,
         AttributeFunction,
@@ -55,6 +56,7 @@ pub mod prelude {
 pub struct UiLayout {
     pub(crate) root: ParsedTree,
     pub(crate) templates: HashMap<String, UiTemplate>,
+    pub(crate) resources: Resources,
 }
 
 #[derive(Component)]
@@ -62,7 +64,7 @@ pub struct UiDocumentTemplate {
     pub name: String,
     pub target_layout: Handle<XmlAsset>,
     pub target_container: String,
-    pub properties: HashMap<String, String>,
+    pub resources: Resources,
 }
 
 #[derive(Resource)]

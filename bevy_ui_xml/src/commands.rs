@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use bevy::ecs::system::{SystemId, SystemParam};
 use bevy::prelude::*;
 use crate::loader::{ParsedTree, XmlAsset};
-use crate::parser::Layouts;
+use crate::parser::{Layouts, Resources};
 use crate::{UiDocumentTemplate, XmlLibrary};
 
 #[derive(Component, Clone)]
@@ -21,6 +21,29 @@ pub(crate) struct UiDocumentPrepared;
 
 #[derive(Component, Reflect, Debug, Clone, Default)]
 pub(crate) struct UiId(pub String);
+
+pub(crate) struct ResourceCollection<'a> {
+    global: &'a Resources,
+    local: &'a Resources
+}
+
+impl<'a> ResourceCollection<'a> {
+    fn new(global: &'a Resources, local: &'a Resources) -> Self {
+        Self { global, local }
+    }
+
+    fn get(&self, key: &str) -> Option<&String> {
+        if let Some(local_value) = self.local.get(key) {
+            Some(local_value)
+        }
+        else if let Some(global_value) = self.global.get(key) {
+            Some(global_value)
+        }
+        else {
+            None
+        }
+    }
+}
 
 pub(crate) fn hot_reload(
     mut commands: Commands,
@@ -56,7 +79,16 @@ pub(crate) fn hot_reload(
 
             if layouts.contains_key(&aa.handle.id()) {
                 let mut entity: EntityCommands = commands.entity(e);
-                spawn_layout(&mut entity, &layouts.get(&aa.handle.id()).unwrap().root, &server, &library);
+                let layout = layouts.get(&aa.handle.id()).unwrap();
+                let local = Resources::default();
+                let resources = ResourceCollection::new(&layout.resources, &local);
+                spawn_layout(
+                    &mut entity,
+                    &server,
+                    &library,
+                    &layout.root,
+                    &resources,
+                );
             }
             else {
                 panic!("??");
@@ -74,21 +106,43 @@ pub(crate) fn spawn_command(
 ) {
     for (e, document) in documents.iter() {
         if layouts.contains_key(&document.handle.id()) {
+            let layout = layouts.get(&document.handle.id()).unwrap();
             let mut entity = commands.entity(e);
-            spawn_layout(&mut entity, &layouts.get(&document.handle.id()).unwrap().root, &server, &library);
+            let local = Resources::default();
+            let resources = ResourceCollection::new(&layout.resources, &local);
+            spawn_layout(
+                &mut entity,
+                &server,
+                &library,
+                &layout.root,
+                &resources,
+            );
             commands.entity(e).insert(UiDocumentPrepared);
         }
     }
 }
 
 pub(crate) fn spawn_layout(
-    entity:  &mut EntityCommands,
-    tree:    &ParsedTree,
-    server:  &AssetServer,
-    library: &XmlLibrary,
+    entity:    &mut EntityCommands,
+    server:    &AssetServer,
+    library:   &XmlLibrary,
+    tree:      &ParsedTree,
+    resources: &ResourceCollection,
 ) {
     tree.components.iter().for_each(|c| {
         c.insert_to(entity, server);
+    });
+
+    tree.container_properties.iter().for_each(|(name, property)| {
+        if name == "id" {
+            entity.insert(UiId(resources.get(property).unwrap().clone()));
+        }
+        else if let Some(function) = library.functions.get(name.as_str()) {
+            function.insert_function_tag(resources.get(property).unwrap(), entity);
+        }
+        else {
+            error!("[Container] Unknown attribute: {}", name);
+        }
     });
 
     if let Some(id) = &tree.id {
@@ -96,7 +150,6 @@ pub(crate) fn spawn_layout(
     }
 
     let functions = &tree.functions;
-
     for (name, value) in functions {
         let factory = library.functions.get(name.as_str()).unwrap();
         factory.insert_function_tag(value, entity);
@@ -105,12 +158,17 @@ pub(crate) fn spawn_layout(
     if tree.containers.is_empty() {
         return;
     }
-
     let parent = entity.id();
     let mut commands = entity.commands();
     for container in &tree.containers {
         let mut children = commands.spawn_empty();
-        spawn_layout(&mut children, &container, server, library);
+        spawn_layout(
+            &mut children,
+            &server,
+            &library,
+            &container,
+            &resources,
+        );
         children.insert(ChildOf(parent));
     }
 }
@@ -132,14 +190,24 @@ pub(crate) fn spawn_template(
                 if ui_id.0 != template.target_container {
                     continue;
                 }
-                let target_template = layouts.get(&template.target_layout.id()).unwrap()
-                    .templates.get(&template.name).unwrap();
+                let layout = layouts.get(&template.target_layout.id()).unwrap();
+                let target_template = layout.templates.get(&template.name).unwrap();
+
                 let mut tree = target_template.root.clone();
 
-                set_properties(&mut tree, &template.properties);
+                let local = &template.resources;
+                let resources = ResourceCollection::new(&layout.resources, &local);
+
+                set_component_properties(&mut tree, &resources);
 
                 let mut c_commands = commands.entity(c);
-                spawn_layout(&mut c_commands, &tree, &server, &library);
+                spawn_layout(
+                    &mut c_commands,
+                    &server,
+                    &library,
+                    &tree,
+                    &resources
+                );
 
                 let mut tmp_commands = commands.entity(tmp);
                 tmp_commands.despawn();
@@ -149,16 +217,16 @@ pub(crate) fn spawn_template(
     });
 }
 
-fn set_properties(tree: &mut ParsedTree, properties: &HashMap<String, String>) {
+fn set_component_properties(tree: &mut ParsedTree, properties: &ResourceCollection) {
     for ap in &tree.properties {
-        let value = properties.get(&ap.property).unwrap();
+        let value = properties.get(&ap.property).expect(&format!("[Ui Layout Template] Property not found: {}", ap.property));
         for component in &mut tree.components {
             component.parse_attribute(&ap.attribute, value);
         }
     }
 
     for container in &mut tree.containers {
-        set_properties(container, properties);
+        set_component_properties(container, properties);
     }
 }
 
@@ -167,8 +235,6 @@ pub struct UiFunctionRegistry<'w, 's> {
     functions: ResMut<'w, UiFunctions>,
     cmd: Commands<'w, 's>,
 }
-
-//pub type SpawnFunction = dyn Fn(EntityCommands) + Send + Sync + 'static;
 
 impl<'w, 's> UiFunctionRegistry<'w, 's> {
     pub fn register<S, M>(&mut self, name: impl Into<String>, func: S)
@@ -196,6 +262,6 @@ impl UiFunctions {
             .map(|id| {
                 cmd.run_system_with(*id, entity);
             })
-            .unwrap_or_else(|| warn!("function `{key}` is not bound"));
+            .unwrap_or_else(|| error!("[Ui Functions] Function `{key}` is not bound"));
     }
 }
