@@ -1,18 +1,17 @@
 use std::collections::HashMap;
-use bevy::ecs::component::Mutable;
 use bevy::ecs::system::{SystemId, SystemParam};
-use bevy::image::ImageLoaderError;
 use bevy::prelude::*;
-use crate::loader::ParsedTree;
-use crate::{UiDocumentTemplate, UiLayout};
+use crate::loader::{ParsedTree, XmlAsset};
+use crate::parser::Layouts;
+use crate::UiDocumentTemplate;
 
 #[derive(Component, Clone)]
 pub struct UiDocument {
-    handle: Handle<UiLayout>,
+    handle: Handle<XmlAsset>,
 }
 
 impl UiDocument {
-    pub const fn new(handle: Handle<UiLayout>) -> Self {
+    pub const fn new(handle: Handle<XmlAsset>) -> Self {
         Self { handle }
     }
 }
@@ -25,10 +24,10 @@ pub(crate) struct UiId(pub String);
 
 pub(crate) fn hot_reload(
     mut commands: Commands,
-    mut events:   EventReader<AssetEvent<UiLayout>>,
-    layouts:      Query<(Entity, &UiDocument)>,
+    mut events:   EventReader<AssetEvent<XmlAsset>>,
+    documents:    Query<(Entity, &UiDocument)>,
+    layouts:      Res<Layouts>,
     children:     Query<&Children>,
-    assets:       Res<Assets<UiLayout>>,
     server:       Res<AssetServer>,
 ) {
     events.read().for_each(|ev| {
@@ -39,7 +38,7 @@ pub(crate) fn hot_reload(
             }
         };
 
-        for (e, aa) in layouts {
+        for (e, aa) in documents {
             if !id.eq(&aa.handle.id()) {
                 continue;
             }
@@ -54,10 +53,9 @@ pub(crate) fn hot_reload(
             commands.entity(e).insert(aa.clone());
             commands.entity(e).insert(UiDocumentPrepared);
 
-            let layout = assets.get(&aa.handle);
-            if let Some(layout) = layout {
-                let mut entity = commands.entity(e);
-                spawn_layout(&mut entity, &layout.root, &server);
+            if layouts.contains_key(&aa.handle.id()) {
+                let mut entity: EntityCommands = commands.entity(e);
+                spawn_layout(&mut entity, &layouts.get(&aa.handle.id()).unwrap().root, &server);
             }
             else {
                 panic!("??");
@@ -69,18 +67,14 @@ pub(crate) fn hot_reload(
 pub(crate) fn spawn_command(
     mut commands: Commands,
     documents:    Query<(Entity, &UiDocument), Without<UiDocumentPrepared>>,
-    assets:       Res<Assets<UiLayout>>,
+    layouts:      Res<Layouts>,
     server:       Res<AssetServer>,
 ) {
     for (e, document) in documents.iter() {
-        let layout = assets.get(&document.handle);
-        if let Some(layout) = layout {
+        if layouts.contains_key(&document.handle.id()) {
             let mut entity = commands.entity(e);
-            spawn_layout(&mut entity, &layout.root, &server);
+            spawn_layout(&mut entity, &layouts.get(&document.handle.id()).unwrap().root, &server);
             commands.entity(e).insert(UiDocumentPrepared);
-        }
-        else {
-            return;
         }
     }
 }
@@ -118,9 +112,9 @@ pub(crate) fn spawn_layout(
 
     let parent = entity.id();
     let mut commands = entity.commands();
-    for component in &tree.containers {
+    for container in &tree.containers {
         let mut children = commands.spawn_empty();
-        spawn_layout(&mut children, &component, server);
+        spawn_layout(&mut children, &container, server);
         children.insert(ChildOf(parent));
     }
 }
@@ -132,17 +126,17 @@ pub(crate) fn spawn_template(
     mut commands: Commands,
     mut templates: Query<(Entity, &UiDocumentTemplate), Without<UiTemplatePrepared>>,
     mut query:     Query<(Entity, &UiId)>,
-    assets:        Res<Assets<UiLayout>>,
+    layouts:       Res<Layouts>,
     server:        Res<AssetServer>,
 ) {
     templates.iter_mut().for_each(|(tmp, template)| {
-        if let Some(layout) = assets.get(&template.target_layout) {
-
+        if layouts.contains_key(&template.target_layout.id()) {
             for (c, ui_id) in query.iter_mut() {
                 if ui_id.0 != template.target_container {
                     continue;
                 }
-                let target_template = layout.templates.get(&template.name).unwrap();
+                let target_template = layouts.get(&template.target_layout.id()).unwrap()
+                    .templates.get(&template.name).unwrap();
                 let mut tree = target_template.root.clone();
 
                 set_properties(&mut tree, &template.properties);
@@ -172,42 +166,12 @@ fn set_properties(tree: &mut ParsedTree, properties: &HashMap<String, String>) {
 }
 
 #[derive(SystemParam)]
-pub struct UiQuery<'w, 's, T: 'static + Component> {
-    query: Query<'w, 's, (&'static T, &'static UiId)>
-}
-
-impl<'w, 's, T: 'static + Component> UiQuery<'w, 's, T> {
-    pub fn get(&self, id: &str) -> Option<&T> {
-        self.query.iter()
-            .find(|(_, ui_id)| ui_id.0 == id)
-            .map(|(component, _)| component)
-    }
-}
-
-#[derive(SystemParam)]
-pub struct UiMutQuery<'w, 's, T: 'static + Component<Mutability = Mutable>> {
-    query: Query<'w, 's, (&'static mut T, &'static UiId)>
-}
-
-impl<'w, 's, T: 'static + Component<Mutability=Mutable>> UiMutQuery<'w, 's, T> {
-    pub fn get_mut(&mut self, id: &str) -> Option<Mut<T>> {
-        for (c, ui_id) in self.query.iter_mut() {
-            if ui_id.0 == id {
-                return Some(c);
-            }
-        }
-
-        None
-    }
-}
-
-#[derive(SystemParam)]
 pub struct UiFunctionRegistry<'w, 's> {
     functions: ResMut<'w, UiFunctions>,
     cmd: Commands<'w, 's>,
 }
 
-pub type SpawnFunction = dyn Fn(EntityCommands) + Send + Sync + 'static;
+//pub type SpawnFunction = dyn Fn(EntityCommands) + Send + Sync + 'static;
 
 impl<'w, 's> UiFunctionRegistry<'w, 's> {
     pub fn register<S, M>(&mut self, name: impl Into<String>, func: S)

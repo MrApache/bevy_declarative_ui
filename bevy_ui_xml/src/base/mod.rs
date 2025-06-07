@@ -18,15 +18,15 @@ pub use text::TextParser;
 pub use image::ImageNodeParser;
 pub use button::ButtonParser;
 
-use crate::loader::UiLayoutLoader;
+use crate::XmlLibrary;
 
-pub fn add_base(library: &mut UiLayoutLoader) {
-    library.components.insert("BackgroundColor", || Box::new(BackgroundColorParser::default()));
-    library.components.insert("Node",            || Box::new(NodeParser::default()));
-    library.components.insert("ImageNode",       || Box::new(ImageNodeParser::default()));
-    library.components.insert("TextFont",        || Box::new(TextFontParser::default()));
-    library.components.insert("TextColor",       || Box::new(TextColorParser::default()));
-    library.components.insert("TextLayout",      || Box::new(TextLayoutParser::default()));
-    library.components.insert("Text",            || Box::new(TextParser::default()));
-    library.components.insert("Button",          || Box::new(ButtonParser));
+pub fn add_base(library: &mut XmlLibrary) {
+    library.add_component("BackgroundColor", || Box::new(BackgroundColorParser::default()));
+    library.add_component("Node",            || Box::new(NodeParser::default()));
+    library.add_component("ImageNode",       || Box::new(ImageNodeParser::default()));
+    library.add_component("TextFont",        || Box::new(TextFontParser::default()));
+    library.add_component("TextColor",       || Box::new(TextColorParser::default()));
+    library.add_component("TextLayout",      || Box::new(TextLayoutParser::default()));
+    library.add_component("Text",            || Box::new(TextParser::default()));
+    library.add_component("Button",          || Box::new(ButtonParser));
 }

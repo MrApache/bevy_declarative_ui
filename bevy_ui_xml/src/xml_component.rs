@@ -6,8 +6,8 @@ pub type XmlComponentFactory = fn() -> Box<dyn XmlComponent>;
 
 pub trait XmlComponent: Send + Sync + 'static + Debug + DynClone {
     fn insert_to(&self, entity: &mut EntityCommands, server: &AssetServer);
-    fn clear(&mut self);
-    fn parse_attribute(&mut self, name: &str, value: &str) -> bool;
+    fn clear(&mut self) {}
+    fn parse_attribute(&mut self, _name: &str, _value: &str) -> bool {false}
     fn parse_nested_element(&mut self, _node: roxmltree::Node) {}
     fn is_nested_element(&self, _node: roxmltree::Node) -> bool { false }
 }

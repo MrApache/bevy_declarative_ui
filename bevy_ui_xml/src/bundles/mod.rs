@@ -2,8 +2,8 @@
 mod text;
 
 pub use text::TextBundleParser;
-use crate::loader::UiLayoutLoader;
+use crate::XmlLibrary;
 
-pub fn add_bundles(library: &mut UiLayoutLoader) {
-    library.components.insert("TextBundle", || Box::new(TextBundleParser::default()));
+pub fn add_bundles(library: &mut XmlLibrary) {
+    library.add_component("TextBundle", || Box::new(TextBundleParser::default()));
 }
