@@ -11,3 +11,7 @@ pub trait XmlComponent: Send + Sync + 'static + Debug + DynClone {
     fn parse_nested_element(&mut self, _node: roxmltree::Node) {}
     fn is_nested_element(&self, _node: roxmltree::Node) -> bool { false }
 }
+
+pub trait XmlTypeParser: Default {
+    fn xml_parse_from_string(value: &str) -> Result<Self, ()> where Self: Sized;
+}
