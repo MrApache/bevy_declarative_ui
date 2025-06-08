@@ -1,5 +1,6 @@
 use bevy::prelude::{EntityCommands, AssetServer};
 use crate::base::{NodeParser, TextColorParser, TextFontParser, TextParser};
+use crate::prelude::Extractor;
 use crate::xml_component::XmlComponent;
 
 #[derive(Default, Debug, Clone)]
@@ -11,6 +12,13 @@ pub struct TextBundleParser {
 }
 
 impl XmlComponent for TextBundleParser {
+    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, server: &AssetServer) {
+        self.node_parser.inject_value(name, value, extractor, server);
+        self.text_parser.inject_value(name, value, extractor, server);
+        self.text_color_parser.inject_value(name, value, extractor, server);
+        self.text_font_parser.inject_value(name, value, extractor, server);
+    }
+
     fn insert_to(&self, entity: &mut EntityCommands, server: &AssetServer) {
         self.node_parser.insert_to(entity, server);
         self.text_parser.insert_to(entity, server);

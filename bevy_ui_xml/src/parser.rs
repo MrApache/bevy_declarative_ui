@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
-use bevy::reflect::Array;
 use roxmltree::{Document, NodeType};
 use crate::loader::{AttributeProperty, ParsedTree, UiTemplate, XmlAsset};
 use crate::prelude::XmlComponent;
 use crate::{UiLayout, XmlLibrary};
+use crate::commands::ResourceCollection;
 
-#[derive(Debug, Default, Deref, DerefMut)]
+#[derive(Clone, Debug, Default, Deref, DerefMut, Reflect)]
 pub struct Resources(HashMap<String, String>);
 
 #[macro_export]
@@ -20,8 +20,8 @@ macro_rules! res {
 
 
 impl Resources {
-    pub fn insert(&mut self, name: &str, value: &str) {
-        self.0.insert(name.to_string(), value.to_string());
+    pub fn insert(&mut self, name: &str, value: impl Into<String>) {
+        self.0.insert(name.to_string(), value.into());
     }
 
     pub fn with<const N: usize>(pairs:[(&str, &str); N]) -> Self {
@@ -36,25 +36,8 @@ impl Resources {
 
 struct ParsingContext<'a> {
     library: &'a XmlLibrary,
-    resources: &'a Resources,
+    resources: &'a ResourceCollection<'a>,
     root: roxmltree::Node<'a, 'a>,
-}
-
-#[derive(Resource, Deref, DerefMut, Default)]
-pub(crate) struct Layouts(HashMap<AssetId<XmlAsset>, UiLayout>);
-
-pub(crate) fn parse_xml(
-    mut events:  EventReader<AssetEvent<XmlAsset>>,
-    mut layouts: ResMut<Layouts>,
-    components:  Res<XmlLibrary>,
-    assets:      Res<Assets<XmlAsset>>,
-) {
-    for event in events.read() {
-        if let AssetEvent::Added { id: handle } = event {
-            let asset = assets.get(*handle).unwrap();
-            layouts.insert(*handle, parse_layout(&components, asset));
-        }
-    }
 }
 
 fn parse_template(ctx: &ParsingContext) -> (String, UiTemplate) {
@@ -84,8 +67,8 @@ fn parse_container(ctx: &ParsingContext) -> ParsedTree {
         let resolved_value = if is_property(raw_value) {
             let property = extract_property_name(raw_value).unwrap();
 
-            if ctx.resources.contains_key(property) {
-                ctx.resources.get(property).unwrap().clone()
+            if let Some(value) = ctx.resources.get(property) {
+                value.clone()
             }
             else {
                 container.container_properties.insert(
@@ -116,7 +99,9 @@ fn parse_container(ctx: &ParsingContext) -> ParsedTree {
 }
 
 
-fn parse_component(ctx: &ParsingContext, properties: &mut Vec<AttributeProperty>) -> Box<dyn XmlComponent> {
+fn parse_component(ctx: &ParsingContext) -> (Box<dyn XmlComponent>, Vec<AttributeProperty>) {
+    let mut properties: Vec<AttributeProperty> = Vec::new();
+
     let name: &str = ctx.root.tag_name().name();
     let mut component = ctx.library.get_component(name);
     for attribute in ctx.root.attributes() {
@@ -125,17 +110,17 @@ fn parse_component(ctx: &ParsingContext, properties: &mut Vec<AttributeProperty>
                 .expect(&format!("[{}] Empty property name", name))
                 .to_string();
 
-            if ctx.resources.contains_key(&property) {
-                if !component.parse_attribute(attribute.name(), ctx.resources.get(&property).unwrap()) {
+            if let Some(value) = ctx.resources.get(&property) {
+                if !component.parse_attribute(attribute.name(), value) {
                     error!("[{}] Unknown attribute: {}", name, attribute.name());
                 }
             }
-            else {
-                properties.push(AttributeProperty {
-                    attribute: attribute.name().to_string(),
-                    property
-                });
-            }
+
+            properties.push(AttributeProperty {
+                attribute: attribute.name().to_string(),
+                property
+            });
+
             continue;
         }
 
@@ -144,14 +129,13 @@ fn parse_component(ctx: &ParsingContext, properties: &mut Vec<AttributeProperty>
         }
     }
 
-    component
+    (component, properties)
 }
 
 fn parse_tree(ctx: &ParsingContext) -> ParsedTree {
     let mut tree: ParsedTree = ParsedTree {
         components: vec![],
         containers: vec![],
-        properties: vec![],
         container_properties: HashMap::new(),
         functions: Default::default(),
         id: None,
@@ -167,9 +151,10 @@ fn parse_tree(ctx: &ParsingContext) -> ParsedTree {
         match name {
             "Template" => {},
             "Property" => {},
-            "Resources" => {},
+            "GlobalResources" => {},
+            "LocalResources" => {},
             "Container" => tree.containers.push(parse_container(&ctx)),
-            _ => tree.components.push(parse_component(&ctx, &mut tree.properties)),
+            _ => tree.components.push(parse_component(&ctx)),
         }
     });
 
@@ -201,8 +186,8 @@ fn parse_resources(ctx: &ParsingContext) -> Resources {
     Resources(resources)
 }
 
-fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
-    let document: Document = Document::parse(&xml.string).unwrap();
+pub(crate) fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
+    let document: Document = Document::parse(&xml.string).unwrap(); //TODO panic when parsing broken xml
     let root: roxmltree::Node = document.root_element();
 
     if root.tag_name().name() != "Layout" {
@@ -210,9 +195,11 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
     }
 
     let mut templates: HashMap<String, UiTemplate> = HashMap::new();
-    let mut resources: Resources = Resources::default();
+    let mut global_res: Resources = Resources::default();
+    let mut local_res: Resources = Resources::default();
 
     for children in root.children().filter(|child| child.is_element()) {
+        let resources: ResourceCollection = ResourceCollection::new(&global_res, &local_res);
         let ctx = ParsingContext {
             library: components,
             resources: &resources,
@@ -223,13 +210,20 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
                 let (name, template) = parse_template(&ctx);
                 templates.insert(name, template);
             },
-            "Resources" => {
-                if !resources.is_empty() {
+            "GlobalResources" => {
+                if !global_res.is_empty() {
                     error!("[Ui Layout] Multiple resources tag");
                     continue;
                 }
-                resources = parse_resources(&ctx);
+                global_res = parse_resources(&ctx);
             },
+            "LocalResources" => {
+                if !local_res.is_empty() {
+                    error!("[Ui Layout] Multiple resources tag");
+                    continue;
+                }
+                local_res = parse_resources(&ctx);
+            }
             _ => break
         }
     }
@@ -238,6 +232,7 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
         println!("Parsed templates: {:?}", template.0)
     }
 
+    let resources: ResourceCollection = ResourceCollection::new(&global_res, &local_res);
     let ctx = ParsingContext {
         library: components,
         resources: &resources,
@@ -247,7 +242,8 @@ fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
     UiLayout {
         root: parse_tree(&ctx),
         templates,
-        resources
+        global: global_res,
+        local: local_res,
     }
 }
 

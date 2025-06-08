@@ -3,6 +3,7 @@ use bevy::asset::AssetServer;
 use bevy::log::error;
 use bevy::prelude::{EntityCommands, Font, TextFont};
 use bevy::text::{FontSmoothing, LineHeight};
+use crate::prelude::Extractor;
 use crate::xml_component::XmlComponent;
 use crate::raw_handle::RawHandle;
 
@@ -26,6 +27,18 @@ impl Default for TextFontParser {
 }
 
 impl XmlComponent for TextFontParser {
+    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, server: &AssetServer) {
+        extractor.extract::<TextFont, _>(|c| {
+            match name {
+                "font"           => c.font           = server.load(value),
+                "font_size"      => c.font_size      = f32::from_str(value).unwrap(),
+                "line_height"    => c.line_height    = parse_line_height(value),
+                "font_smoothing" => c.font_smoothing = parse_font_smoothing(value),
+                _ => {}
+            }
+        });
+    }
+
     fn insert_to(&self, entity: &mut EntityCommands, server: &AssetServer) {
         let font = TextFont {
             font: self.font.handle(server),

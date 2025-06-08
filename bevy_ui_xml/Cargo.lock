@@ -1239,6 +1239,7 @@ dependencies = [
  "dyn-clone",
  "roxmltree",
  "thiserror 2.0.12",
+ "uuid",
 ]
 
 [[package]]

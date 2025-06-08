@@ -1,6 +1,5 @@
 mod text_color;
 mod node;
-mod color;
 mod background_color;
 mod text_font;
 mod text_layout;
@@ -10,7 +9,6 @@ mod button;
 
 pub use text_color::TextColorParser;
 pub use node::NodeParser;
-pub use color::ColorParser;
 pub use background_color::BackgroundColorParser;
 pub use text_font::TextFontParser;
 pub use text_layout::TextLayoutParser;

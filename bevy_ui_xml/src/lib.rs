@@ -3,6 +3,28 @@ use bevy::prelude::*;
 use crate::base::add_base;
 use crate::bundles::add_bundles;
 
+/*
+TODO:
+  Resources hierarchy:
+    in document: Local > Global -> Error
+    in template: Spawn > Local > Global -> Error
+
+TODO:
+    Refactor tag parsing:
+        Custom XML Parser??
+
+TODO:
+    Template with document Id
+
+TODO:
+    Error handling
+    Beautiful error print
+        Print with
+            Layout name
+            Tag
+            Attribute
+*/
+
 mod raw_handle;
 mod commands;
 mod xml_component;
@@ -21,16 +43,18 @@ use crate::loader::{
 };
 
 use crate::commands::{
-    hot_reload,
+    asset_event_reader,
     spawn_command,
     spawn_template,
+    sync_local_resources,
     UiFunctions,
     UiId
 };
-use crate::parser::{parse_xml, Layouts, Resources};
-use crate::prelude::{XmlComponent, XmlComponentFactory};
+use crate::parser::Resources;
+use crate::prelude::{UiDocument, UiDocumentId, XmlComponent, XmlComponentFactory};
 
 pub mod prelude {
+    pub use crate::SyncSet;
     pub use crate::parser::Resources;
     pub use crate::loader::{
         UiXmlLoader,
@@ -46,17 +70,22 @@ pub mod prelude {
     pub use crate::UiLayout;
     pub use crate::UiDocumentTemplate;
     pub use crate::commands::{
+        UiDocumentId,
         UiDocument,
         UiFunctionRegistry,
         UiFunctions,
     };
 }
 
+#[derive(Resource, Deref, DerefMut, Default)]
+pub(crate) struct Layouts(HashMap<AssetId<XmlAsset>, UiLayout>);
+
 #[derive(Debug)]
 pub struct UiLayout {
     pub(crate) root: ParsedTree,
     pub(crate) templates: HashMap<String, UiTemplate>,
-    pub(crate) resources: Resources,
+    pub(crate) global: Resources,
+    pub(crate) local: Resources,
 }
 
 #[derive(Component)]
@@ -105,6 +134,12 @@ impl XmlLibrary {
     }
 }
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SyncSet {
+    Functions,
+    SyncLocalResources,
+}
+
 pub struct UiXmlPlugin;
 
 impl Plugin for UiXmlPlugin {
@@ -113,13 +148,20 @@ impl Plugin for UiXmlPlugin {
         app.init_resource::<UiFunctions>();
         app.init_resource::<Layouts>();
         app.init_asset_loader::<UiXmlLoader>();
+
         app.register_type::<UiId>();
+        app.register_type::<UiDocument>();
+        app.register_type::<UiDocumentId>();
 
         app.add_systems(Update, (
-            parse_xml,
-            hot_reload,
+            asset_event_reader,
             spawn_command,
             spawn_template,
         ));
+
+        app.add_systems(Last, sync_local_resources.in_set(SyncSet::SyncLocalResources));
+
+        app.configure_sets(PostUpdate, SyncSet::Functions);
+        app.configure_sets(Last, SyncSet::SyncLocalResources);
     }
 }

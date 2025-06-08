@@ -1,5 +1,6 @@
 use std::str::FromStr;
 use bevy::prelude::*;
+use crate::prelude::Extractor;
 use crate::types::parse_flex_direction;
 use crate::xml_component::XmlComponent;
 
@@ -8,7 +9,55 @@ pub struct NodeParser {
     node: Node
 }
 
+fn set_value(node: &mut Node, name:&str, value:&str) -> bool {
+    match name {
+        "overflow_x"               => node.overflow.x = parse_overflow_axis(value),
+        "overflow_y"               => node.overflow.y = parse_overflow_axis(value),
+        "overflow_clip_visual_box" => node.overflow_clip_margin.visual_box = parse_overflow_clip_visual_box(value),
+        "overflow_clip_margin"     => node.overflow_clip_margin.margin     = f32::from_str(value).unwrap(),
+        "display"                  => node.display         = parse_display(value),
+        "box_sizing"               => node.box_sizing      = parse_box_sizing(value),
+        "position_type"            => node.position_type   = parse_position_type(value),
+        "left"                     => node.left            = parse_val(value),
+        "right"                    => node.right           = parse_val(value),
+        "top"                      => node.top             = parse_val(value),
+        "bottom"                   => node.bottom          = parse_val(value),
+        "width"                    => node.width           = parse_val(value),
+        "height"                   => node.height          = parse_val(value),
+        "min_width"                => node.min_width       = parse_val(value),
+        "min_height"               => node.min_height      = parse_val(value),
+        "max_width"                => node.max_width       = parse_val(value),
+        "max_height"               => node.max_height      = parse_val(value),
+        "aspect_ratio"             => node.aspect_ratio    = f32::from_str(value).ok(),
+        "align_items"              => node.align_items     = parse_align_items(value),
+        "justify_items"            => node.justify_items   = parse_justify_items(value),
+        "align_self"               => node.align_self      = parse_align_self(value),
+        "justify_self"             => node.justify_self    = parse_justify_self(value),
+        "align_content"            => node.align_content   = parse_align_content(value),
+        "justify_content"          => node.justify_content = parse_justify_content(value),
+        "margin"                   => node.margin          = parse_ui_rect(value),
+        "padding"                  => node.padding         = parse_ui_rect(value),
+        "border"                   => node.border          = parse_ui_rect(value),
+        "flex_direction"           => node.flex_direction  = parse_flex_direction(value),
+        "flex_wrap"                => node.flex_wrap       = parse_flex_wrap(value),
+        "flex_grow"                => node.flex_grow       = f32::from_str(value).unwrap(),
+        "flex_shrink"              => node.flex_shrink     = f32::from_str(value).unwrap(),
+        "flex_basis"               => node.flex_basis      = parse_val(value),
+        "row_gap"                  => node.row_gap         = parse_val(value),
+        "column_gap"               => node.column_gap      = parse_val(value),
+        _ => return false,
+    }
+
+    true
+}
+
 impl XmlComponent for NodeParser {
+    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, _: &AssetServer) {
+        extractor.extract::<Node, _>(|mut c| {
+            set_value(&mut c, name, value);
+        });
+    }
+
     fn insert_to(&self, entity: &mut EntityCommands, _: &AssetServer) {
         entity.insert(self.node.clone());
     }
@@ -18,45 +67,7 @@ impl XmlComponent for NodeParser {
     }
 
     fn parse_attribute(&mut self, name: &str, value: &str) -> bool {
-        match name {
-            "overflow_x"               => self.node.overflow.x = parse_overflow_axis(value),
-            "overflow_y"               => self.node.overflow.y = parse_overflow_axis(value),
-            "overflow_clip_visual_box" => self.node.overflow_clip_margin.visual_box = parse_overflow_clip_visual_box(value),
-            "overflow_clip_margin"     => self.node.overflow_clip_margin.margin     = f32::from_str(value).unwrap(),
-            "display"         => self.node.display         = parse_display(value),
-            "box_sizing"      => self.node.box_sizing      = parse_box_sizing(value),
-            "position_type"   => self.node.position_type   = parse_position_type(value),
-            "left"            => self.node.left            = parse_val(value),
-            "right"           => self.node.right           = parse_val(value),
-            "top"             => self.node.top             = parse_val(value),
-            "bottom"          => self.node.bottom          = parse_val(value),
-            "width"           => self.node.width           = parse_val(value),
-            "height"          => self.node.height          = parse_val(value),
-            "min_width"       => self.node.min_width       = parse_val(value),
-            "min_height"      => self.node.min_height      = parse_val(value),
-            "max_width"       => self.node.max_width       = parse_val(value),
-            "max_height"      => self.node.max_height      = parse_val(value),
-            "aspect_ratio"    => self.node.aspect_ratio    = f32::from_str(value).ok(),
-            "align_items"     => self.node.align_items     = parse_align_items(value),
-            "justify_items"   => self.node.justify_items   = parse_justify_items(value),
-            "align_self"      => self.node.align_self      = parse_align_self(value),
-            "justify_self"    => self.node.justify_self    = parse_justify_self(value),
-            "align_content"   => self.node.align_content   = parse_align_content(value),
-            "justify_content" => self.node.justify_content = parse_justify_content(value),
-            "margin"          => self.node.margin          = parse_ui_rect(value),
-            "padding"         => self.node.padding         = parse_ui_rect(value),
-            "border"          => self.node.border          = parse_ui_rect(value),
-            "flex_direction"  => self.node.flex_direction  = parse_flex_direction(value),
-            "flex_wrap"       => self.node.flex_wrap       = parse_flex_wrap(value),
-            "flex_grow"       => self.node.flex_grow       = f32::from_str(value).unwrap(),
-            "flex_shrink"     => self.node.flex_shrink     = f32::from_str(value).unwrap(),
-            "flex_basis"      => self.node.flex_basis      = parse_val(value),
-            "row_gap"         => self.node.row_gap         = parse_val(value),
-            "column_gap"      => self.node.column_gap      = parse_val(value),
-            _ => return false
-        }
-
-        true
+        set_value(&mut self.node, name, value)
     }
 }
 

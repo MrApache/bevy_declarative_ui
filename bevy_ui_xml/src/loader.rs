@@ -7,8 +7,7 @@ use crate::xml_component::XmlComponent;
 
 #[derive(Debug)]
 pub(crate) struct ParsedTree {
-    pub(crate) components: Vec<Box<dyn XmlComponent>>,
-    pub(crate) properties: Vec<AttributeProperty>,
+    pub(crate) components: Vec<(Box<dyn XmlComponent>, Vec<AttributeProperty>)>,
 
     pub(crate) containers: Vec<ParsedTree>,
     pub(crate) container_properties: HashMap<String, String>,
@@ -24,9 +23,12 @@ pub trait AttributeFunction: Sync + Send + 'static {
 impl Clone for ParsedTree {
     fn clone(&self) -> Self {
         Self {
-            components: self.components.iter().map(|c| dyn_clone::clone_box(&**c)).collect::<Vec<_>>(),
+            components: self.components
+                .iter()
+                .map(|(comp, attrs)| (dyn_clone::clone_box(&**comp), attrs.clone()))
+                .collect(),
+
             containers: self.containers.clone(),
-            properties: self.properties.clone(),
             container_properties: self.container_properties.clone(),
             functions:  self.functions.clone(),
             id: self.id.clone(),

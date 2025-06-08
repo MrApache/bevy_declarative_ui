@@ -1,6 +1,7 @@
 use std::str::FromStr;
 use bevy::asset::AssetServer;
 use bevy::prelude::{Color, EntityCommands, Image, ImageNode, NodeImageMode, Rect};
+use crate::prelude::Extractor;
 use crate::xml_component::XmlComponent;
 use crate::raw_handle::RawHandle;
 use crate::types::color_str;
@@ -16,6 +17,18 @@ pub struct ImageNodeParser {
 }
 
 impl XmlComponent for ImageNodeParser {
+    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, server: &AssetServer) {
+        extractor.extract::<ImageNode, _>(|c| {
+            match name {
+                "flip_x" => c.flip_x = bool::from_str(value).unwrap(),
+                "flip_y" => c.flip_y = bool::from_str(value).unwrap(),
+                "image"  => c.image  = server.load(value),
+                "color"  => c.color  = color_str(value),
+                _ => {},
+            }
+        });
+    }
+
     fn insert_to(&self, entity: &mut EntityCommands, server: &AssetServer) {
         entity.insert(ImageNode {
             color: self.color,

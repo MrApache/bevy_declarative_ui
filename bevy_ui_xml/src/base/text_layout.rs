@@ -1,5 +1,6 @@
 use bevy::asset::AssetServer;
-use bevy::prelude::{error, EntityCommands, JustifyText, LineBreak, TextLayout};
+use bevy::prelude::*;
+use crate::prelude::Extractor;
 use crate::xml_component::XmlComponent;
 
 #[derive(Default, Clone, Debug)]
@@ -8,6 +9,16 @@ pub struct TextLayoutParser {
 }
 
 impl XmlComponent for TextLayoutParser {
+    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, _: &AssetServer) {
+        extractor.extract::<TextLayout, _>(|c| {
+            match name {
+                "justify"   => c.justify   = parse_justify_text(value),
+                "linebreak" => c.linebreak = parse_line_break(value),
+                _ => {},
+            }
+        })
+    }
+
     fn insert_to(&self, entity: &mut EntityCommands, _: &AssetServer) {
         entity.insert(self.text_layout.clone());
     }
