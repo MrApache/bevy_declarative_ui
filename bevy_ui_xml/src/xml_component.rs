@@ -38,7 +38,3 @@ pub trait XmlComponent: Send + Sync + 'static + Debug + DynClone {
 pub trait XmlTypeParser: Default {
     fn xml_parse_from_string(value: &str) -> Result<Self, ()> where Self: Sized;
 }
-
-pub trait ComponentInjector {
-    fn inject(&mut self, world: &mut World, entity: Entity);
-}

@@ -33,13 +33,11 @@ mod types;
 mod bundles;
 mod base;
 mod parser;
+mod xml_parser;
+mod functions;
 
 use crate::loader::{
     AttributeFunction,
-    ParsedTree,
-    UiTemplate,
-    UiXmlLoader,
-    XmlAsset
 };
 
 use crate::commands::{
@@ -47,51 +45,45 @@ use crate::commands::{
     spawn_command,
     spawn_template,
     sync_local_resources,
-    UiFunctions,
-    UiId
+    GlobalResources,
+    UiContainerId
 };
-use crate::parser::Resources;
+use crate::functions::UiFunctions;
+use crate::parser::CompiledLayout;
 use crate::prelude::{UiDocument, UiDocumentId, XmlComponent, XmlComponentFactory};
+use crate::xml_parser::{Resources, XmlLayout, XmlLoader};
 
 pub mod prelude {
     pub use crate::SyncSet;
-    pub use crate::parser::Resources;
     pub use crate::loader::{
-        UiXmlLoader,
         AttributeFunction,
     };
     pub use crate::xml_component::*;
-    pub use crate::loader::XmlAsset;
+    pub use crate::xml_parser::{
+        XmlLayout,
+        Resources
+    };
+
+    pub use crate::functions::*;
 
     pub use crate::base::*;
     pub use crate::bundles::*;
 
     pub use crate::raw_handle::RawHandle;
-    pub use crate::UiLayout;
     pub use crate::UiDocumentTemplate;
     pub use crate::commands::{
         UiDocumentId,
         UiDocument,
-        UiFunctionRegistry,
-        UiFunctions,
     };
 }
 
 #[derive(Resource, Deref, DerefMut, Default)]
-pub(crate) struct Layouts(HashMap<AssetId<XmlAsset>, UiLayout>);
-
-#[derive(Debug)]
-pub struct UiLayout {
-    pub(crate) root: ParsedTree,
-    pub(crate) templates: HashMap<String, UiTemplate>,
-    pub(crate) global: Resources,
-    pub(crate) local: Resources,
-}
+pub(crate) struct Layouts(HashMap<AssetId<XmlLayout>, CompiledLayout>);
 
 #[derive(Component)]
 pub struct UiDocumentTemplate {
     pub name: String,
-    pub target_layout: Handle<XmlAsset>,
+    pub target_layout: Handle<XmlLayout>,
     pub target_container: String,
     pub resources: Resources,
 }
@@ -144,12 +136,13 @@ pub struct UiXmlPlugin;
 
 impl Plugin for UiXmlPlugin {
     fn build(&self, app: &mut App) {
-        app.init_asset::<XmlAsset>();
+        app.init_asset::<XmlLayout>();
         app.init_resource::<UiFunctions>();
         app.init_resource::<Layouts>();
-        app.init_asset_loader::<UiXmlLoader>();
+        app.init_resource::<GlobalResources>();
+        app.init_asset_loader::<XmlLoader>();
 
-        app.register_type::<UiId>();
+        app.register_type::<UiContainerId>();
         app.register_type::<UiDocument>();
         app.register_type::<UiDocumentId>();
 

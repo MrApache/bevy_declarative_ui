@@ -1,260 +1,146 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
-use roxmltree::{Document, NodeType};
-use crate::loader::{AttributeProperty, ParsedTree, UiTemplate, XmlAsset};
-use crate::prelude::XmlComponent;
-use crate::{UiLayout, XmlLibrary};
-use crate::commands::ResourceCollection;
+use crate::prelude::*;
+use crate::XmlLibrary;
+use crate::loader::AttributeProperty;
+use crate::xml_parser::{Tag, UiNode};
 
-#[derive(Clone, Debug, Default, Deref, DerefMut, Reflect)]
-pub struct Resources(HashMap<String, String>);
-
-#[macro_export]
-macro_rules! res {
-    ( $( ($key:expr, $value:expr) ),* $(,)? ) => {
-        {
-            bevy_ui_xml::prelude::Resources::with([ $( ($key, $value) ),* ])
-        }
-    };
+#[derive(Default, Debug)]
+pub struct CompiledLayout {
+    pub(crate) root:      CompiledNode,
+    pub(crate) local:     Resources,
+    pub(crate) global:    Resources,
+    pub(crate) templates: HashMap<String, CompiledNode>,
 }
 
+#[derive(Default, Debug)]
+pub(crate) struct CompiledNode {
+    pub(crate) components: Vec<(Box<dyn XmlComponent>, Vec<AttributeProperty>)>,
 
-impl Resources {
-    pub fn insert(&mut self, name: &str, value: impl Into<String>) {
-        self.0.insert(name.to_string(), value.into());
-    }
+    pub(crate) containers: Vec<CompiledNode>,
+    pub(crate) properties: HashMap<String, String>,
 
-    pub fn with<const N: usize>(pairs:[(&str, &str); N]) -> Self {
-        let mut instance = Self { 0: Default::default() };
-        for (name, value) in pairs {
-            instance.insert(name, value);
+    pub(crate) functions:  HashMap<String, String>,
+    pub(crate) id: Option<String>,
+}
+
+impl Clone for CompiledNode {
+    fn clone(&self) -> Self {
+        Self {
+            components: self.components
+                .iter()
+                .map(|(comp, attrs)| (dyn_clone::clone_box(&**comp), attrs.clone()))
+                .collect(),
+
+            containers: self.containers.clone(),
+            properties: self.properties.clone(),
+            functions:  self.functions.clone(),
+            id: self.id.clone(),
         }
-
-        instance
     }
 }
 
-struct ParsingContext<'a> {
+pub(crate) struct LayoutCompiler<'a> {
     library: &'a XmlLibrary,
-    resources: &'a ResourceCollection<'a>,
-    root: roxmltree::Node<'a, 'a>,
+    layout: &'a XmlLayout,
 }
 
-fn parse_template(ctx: &ParsingContext) -> (String, UiTemplate) {
-    let name = ctx.root.attribute("name")
-        .expect("[Ui Layout Template] Template does not have a name").to_owned();
-
-    let mut iter = ctx.root.children();
-    while let Some(val) = iter.next() {
-        if val.node_type() != NodeType::Element {
-            continue;
-        }
-
-        break;
+impl<'a> LayoutCompiler<'a> {
+    pub fn new(library: &'a XmlLibrary, layout: &'a XmlLayout) -> Self {
+        Self { library, layout }
     }
 
-    (name, UiTemplate {
-        root: parse_tree(ctx),
-    })
-}
+    fn compile_container(&self, node: &UiNode) -> CompiledNode {
+        let mut compiled_node: CompiledNode = CompiledNode::default();
 
-fn parse_container(ctx: &ParsingContext) -> ParsedTree {
-    let mut container = parse_tree(ctx);
+        node.children.iter().for_each(|node| {
+            self.compile_node(&node, &mut compiled_node);
+        });
 
-    for attribute in ctx.root.attributes() {
-        let raw_value = attribute.value();
-
-        let resolved_value = if is_property(raw_value) {
-            let property = extract_property_name(raw_value).unwrap();
-
-            if let Some(value) = ctx.resources.get(property) {
-                value.clone()
+        node.attributes.iter().for_each(|attr| {
+            let resolved_value = if attr.is_property {
+                if let Some(value) = self.layout.get_resource(&attr.value) {
+                    value.clone()
+                }
+                else {
+                    compiled_node.properties.insert(attr.name.clone(), attr.value.clone());
+                    return;
+                }
             }
             else {
-                container.container_properties.insert(
-                    attribute.name().to_string(),
-                    property.to_string()
-                );
-                continue;
-            }
+                attr.value.clone()
+            };
 
-        } else {
-            raw_value.to_string()
+            let name: &str = &attr.name;
+
+            if name == "id" {
+                compiled_node.id = Some(resolved_value);
+            }
+            else if self.library.functions.contains_key(name) {
+                compiled_node.functions.insert(name.to_string(), resolved_value);
+            }
+            else {
+                error!("[Container] Unknown attribute: {}", name);
+            }
+        });
+
+        compiled_node
+    }
+
+    fn compile_component(&self, node: &UiNode) -> (Box<dyn XmlComponent>, Vec<AttributeProperty>) {
+        let Tag::Component(ref name) = node.tag else {
+            panic!("expected Tag::Component");
         };
 
-        let name: &str = attribute.name();
+        let mut properties: Vec<AttributeProperty> = Vec::new();
+        let mut component: Box<dyn XmlComponent> = self.library.get_component(&name);
+        node.attributes.iter().for_each(|attr| {
+            if attr.is_property {
+                properties.push(AttributeProperty {
+                    attribute: attr.name.clone(),
+                    property:  attr.value.clone(),
+                });
 
-        if name == "id" {
-            container.id = Some(resolved_value);
-        }
-        else if ctx.library.functions.contains_key(name) {
-            container.functions.insert(name.to_string(), resolved_value);
+                return;
+            }
+
+            if !component.parse_attribute(&attr.name, &attr.value) {
+                error!("[{}] Unknown attribute: {}", name, attr.name);
+            }
+        });
+
+        (component, properties)
+    }
+
+    fn compile_node(&self, node: &UiNode, compiled_node: &mut CompiledNode) {
+        if node.tag == Tag::Container {
+            compiled_node.containers.push(self.compile_container(node))
         }
         else {
-            error!("[Container] Unknown attribute: {}", name);
+            compiled_node.components.push(self.compile_component(node))
         }
     }
 
-    container
-}
+    pub fn compile(&self) -> CompiledLayout {
+        let mut compiled_layout: CompiledLayout = CompiledLayout::default();
+        compiled_layout.global = self.layout.global.clone();
+        compiled_layout.local = self.layout.local.clone();
 
-
-fn parse_component(ctx: &ParsingContext) -> (Box<dyn XmlComponent>, Vec<AttributeProperty>) {
-    let mut properties: Vec<AttributeProperty> = Vec::new();
-
-    let name: &str = ctx.root.tag_name().name();
-    let mut component = ctx.library.get_component(name);
-    for attribute in ctx.root.attributes() {
-        if is_property(attribute.value()) {
-            let property = extract_property_name(attribute.value())
-                .expect(&format!("[{}] Empty property name", name))
-                .to_string();
-
-            if let Some(value) = ctx.resources.get(&property) {
-                if !component.parse_attribute(attribute.name(), value) {
-                    error!("[{}] Unknown attribute: {}", name, attribute.name());
-                }
-            }
-
-            properties.push(AttributeProperty {
-                attribute: attribute.name().to_string(),
-                property
+        self.layout.templates.iter().for_each(|template| {
+            let mut template_node: CompiledNode = CompiledNode::default();
+            template.nodes.iter().for_each(|node| {
+                self.compile_node(node, &mut template_node);
             });
+            compiled_layout.templates.insert(template.name.clone(), template_node);
+        });
 
-            continue;
-        }
+        let mut root_node: CompiledNode = CompiledNode::default();
 
-        if !component.parse_attribute(attribute.name(), attribute.value()) {
-            error!("[{}] Unknown attribute: {}", name, attribute.name());
-        }
-    }
+        self.layout.root_nodes.iter().for_each(|node| {
+            self.compile_node(node, &mut root_node);
+        });
 
-    (component, properties)
-}
-
-fn parse_tree(ctx: &ParsingContext) -> ParsedTree {
-    let mut tree: ParsedTree = ParsedTree {
-        components: vec![],
-        containers: vec![],
-        container_properties: HashMap::new(),
-        functions: Default::default(),
-        id: None,
-    };
-
-    ctx.root.children().filter(|n| n.is_element()).for_each(|root_child| {
-        let name = root_child.tag_name().name();
-        let ctx = ParsingContext {
-            library: ctx.library,
-            resources: ctx.resources,
-            root: root_child,
-        };
-        match name {
-            "Template" => {},
-            "Property" => {},
-            "GlobalResources" => {},
-            "LocalResources" => {},
-            "Container" => tree.containers.push(parse_container(&ctx)),
-            _ => tree.components.push(parse_component(&ctx)),
-        }
-    });
-
-    tree
-}
-
-fn parse_resources(ctx: &ParsingContext) -> Resources {
-    let mut resources: HashMap<String, String> = HashMap::new();
-
-    ctx.root.children().filter(|n| n.is_element()).for_each(|child| {
-        match child.tag_name().name() {
-            "Property" => {
-                let Some(name) = child.attribute("name") else {
-                    error!("[Ui Layout] Property must have a name");
-                    return;
-                };
-
-                let Some(value) = child.attribute("value") else {
-                    error!("[Ui Layout] Property must have a value");
-                    return;
-                };
-
-                resources.insert(name.to_string(), value.to_string());
-            }
-            other => error!("[Ui Layout]: unknown resource tag {}", other),
-        }
-    });
-
-    Resources(resources)
-}
-
-pub(crate) fn parse_layout(components: &XmlLibrary, xml: &XmlAsset) -> UiLayout {
-    let document: Document = Document::parse(&xml.string).unwrap(); //TODO panic when parsing broken xml
-    let root: roxmltree::Node = document.root_element();
-
-    if root.tag_name().name() != "Layout" {
-        panic!("[Ui Layout] Invalid layout");
-    }
-
-    let mut templates: HashMap<String, UiTemplate> = HashMap::new();
-    let mut global_res: Resources = Resources::default();
-    let mut local_res: Resources = Resources::default();
-
-    for children in root.children().filter(|child| child.is_element()) {
-        let resources: ResourceCollection = ResourceCollection::new(&global_res, &local_res);
-        let ctx = ParsingContext {
-            library: components,
-            resources: &resources,
-            root: children,
-        };
-        match children.tag_name().name() {
-            "Template" => {
-                let (name, template) = parse_template(&ctx);
-                templates.insert(name, template);
-            },
-            "GlobalResources" => {
-                if !global_res.is_empty() {
-                    error!("[Ui Layout] Multiple resources tag");
-                    continue;
-                }
-                global_res = parse_resources(&ctx);
-            },
-            "LocalResources" => {
-                if !local_res.is_empty() {
-                    error!("[Ui Layout] Multiple resources tag");
-                    continue;
-                }
-                local_res = parse_resources(&ctx);
-            }
-            _ => break
-        }
-    }
-
-    for template in &templates {
-        println!("Parsed templates: {:?}", template.0)
-    }
-
-    let resources: ResourceCollection = ResourceCollection::new(&global_res, &local_res);
-    let ctx = ParsingContext {
-        library: components,
-        resources: &resources,
-        root,
-    };
-
-    UiLayout {
-        root: parse_tree(&ctx),
-        templates,
-        global: global_res,
-        local: local_res,
-    }
-}
-
-fn is_property(s: &str) -> bool {
-    s.starts_with('{') && s.ends_with('}') && s.len() > 2
-}
-
-fn extract_property_name(s: &str) -> Option<&str> {
-    if is_property(s) {
-        Some(&s[1..s.len() - 1])
-    } else {
-        None
+        compiled_layout.root = root_node;
+        compiled_layout
     }
 }

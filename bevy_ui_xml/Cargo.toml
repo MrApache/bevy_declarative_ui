@@ -10,3 +10,4 @@ thiserror = "2.0.12"
 roxmltree = "0.20.0"
 dyn-clone = "1.0.19"
 uuid = { version = "1.17.0", features = ["v4"]}
+quick-xml = "0.37.5"

@@ -1,26 +1,31 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use bevy::asset::uuid;
-use bevy::ecs::system::{SystemId, SystemParam, SystemState};
+use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 use uuid::Uuid;
-use crate::loader::{ParsedTree, XmlAsset};
-use crate::parser::Resources;
-use crate::{Layouts, UiDocumentTemplate, XmlLibrary};
 use crate::prelude::Extractor;
 use crate::xml_component::XmlComponent;
+use crate::xml_parser::{XmlLayout, Resources};
+use crate::{Layouts, UiDocumentTemplate, XmlLibrary};
+use crate::parser::{CompiledLayout, CompiledNode, LayoutCompiler};
+
+#[derive(Resource, Reflect, Default)]
+pub(crate) struct GlobalResources {
+    storage: HashMap<AssetId<XmlLayout>, Resources>
+}
 
 #[derive(Reflect, Component, Clone)]
 pub struct UiDocument {
-    handle: Handle<XmlAsset>,
+    layout_id:    Handle<XmlLayout>,
     resources: Resources,
     id: Uuid,
 }
 
 impl UiDocument {
-    pub fn new(handle: Handle<XmlAsset>) -> Self {
+    pub fn new(handle: Handle<XmlLayout>) -> Self {
         Self {
-            handle,
+            layout_id: handle,
             resources: Default::default(),
             id: Uuid::new_v4(),
         }
@@ -41,16 +46,18 @@ impl UiDocument {
 }
 
 #[derive(Component)]
-pub(crate) struct InjectorComponents {
+pub(crate) struct Injector {
     injectors: HashMap<String, Vec<(Arc<RwLock<Box<dyn XmlComponent>>>, String)>>,
-    document: Uuid,
+    layout_id: Handle<XmlLayout>,
+    document_id: Uuid,
 }
 
-impl InjectorComponents {
-    fn new(id: Uuid) -> Self {
+impl Injector {
+    fn new(document_id: Uuid, layout_id: Handle<XmlLayout>) -> Self {
         Self {
             injectors: HashMap::new(),
-            document: id,
+            layout_id,
+            document_id,
         }
     }
 }
@@ -59,7 +66,18 @@ impl InjectorComponents {
 pub(crate) struct UiDocumentPrepared;
 
 #[derive(Component, Reflect, Debug, Clone, Default)]
-pub(crate) struct UiId(pub String);
+pub(crate) struct UiContainerId(pub String);
+
+#[derive(Component, Reflect)]
+pub struct UiDocumentId {
+    id: Uuid
+}
+
+impl UiDocumentId {
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
+}
 
 pub(crate) struct ResourceCollection<'a> {
     global: &'a Resources,
@@ -86,22 +104,23 @@ impl<'a> ResourceCollection<'a> {
 
 pub(crate) fn asset_event_reader(
     mut commands: Commands,
-    mut events:   EventReader<AssetEvent<XmlAsset>>,
+    mut events:   EventReader<AssetEvent<XmlLayout>>,
     documents:    Query<(Entity, &UiDocument)>,
     children:     Query<&Children>,
+    mut g_res:    ResMut<GlobalResources>,
     mut layouts:  ResMut<Layouts>,
     library:      Res<XmlLibrary>,
     server:       Res<AssetServer>,
-    assets:       Res<Assets<XmlAsset>>,
+    assets:       Res<Assets<XmlLayout>>,
 ) {
     events.read().for_each(|ev| {
         match ev {
             AssetEvent::Modified { id } => {
-                parse_xml(*id, &assets, &library, &mut layouts);
+                parse_xml(&mut g_res, *id, &assets, &library, &mut layouts);
                 hot_reload(*id, &mut commands, &layouts, &library, &server, documents, children);
             }
             AssetEvent::Added { id } => {
-                parse_xml(*id, &assets, &library, &mut layouts);
+                parse_xml(&mut g_res, *id, &assets, &library, &mut layouts);
             }
             _ => return
         }
@@ -109,17 +128,22 @@ pub(crate) fn asset_event_reader(
 }
 
 fn parse_xml(
-    id:      AssetId<XmlAsset>,
-    assets:  &Assets<XmlAsset>,
+    g_res:   &mut GlobalResources,
+    id:      AssetId<XmlLayout>,
+    assets:  &Assets<XmlLayout>,
     library: &XmlLibrary,
     layouts: &mut Layouts,
 ) {
-    let asset: &XmlAsset = assets.get(id).unwrap();
-    layouts.insert(id, crate::parser::parse_layout(&library, asset));
+    let layout: &XmlLayout = assets.get(id).unwrap();
+    let compiled_layout: CompiledLayout = LayoutCompiler::new(library, layout).compile();
+
+    g_res.storage.insert(id, layout.global.clone()); //TODO Fix
+    //println!("Compile: {}", id);
+    layouts.insert(id, compiled_layout);
 }
 
 fn hot_reload(
-    id:        AssetId<XmlAsset>,
+    id:        AssetId<XmlLayout>,
     commands:  &mut Commands,
     layouts:   &Layouts,
     library:   &XmlLibrary,
@@ -128,7 +152,7 @@ fn hot_reload(
     children:  Query<&Children>,
 ) {
     for (e, aa) in documents {
-        if !id.eq(&aa.handle.id()) {
+        if !id.eq(&aa.layout_id.id()) {
             continue;
         }
 
@@ -142,12 +166,13 @@ fn hot_reload(
         commands.entity(e).insert(aa.clone());
         commands.entity(e).insert(UiDocumentPrepared);
 
-        if layouts.contains_key(&aa.handle.id()) {
+        if layouts.contains_key(&aa.layout_id.id()) {
             let mut entity: EntityCommands = commands.entity(e);
-            let layout = layouts.get(&aa.handle.id()).unwrap();
+            let layout = layouts.get(&aa.layout_id.id()).unwrap();
             let local = Resources::default();
             let resources = ResourceCollection::new(&layout.global, &local);
             spawn_layout(
+                aa.layout_id.clone(),
                 aa.id,
                 &mut entity,
                 &server,
@@ -163,6 +188,7 @@ fn hot_reload(
 }
 
 pub(crate) fn spawn_command(
+    mut g_res:     ResMut<GlobalResources>,
     mut commands:  Commands,
     mut documents: Query<(Entity, &mut UiDocument), Without<UiDocumentPrepared>>,
     layouts:       Res<Layouts>,
@@ -170,13 +196,15 @@ pub(crate) fn spawn_command(
     library:       Res<XmlLibrary>,
 ) {
     for (e, mut document) in documents.iter_mut() {
-        if layouts.contains_key(&document.handle.id()) {
-            let layout = layouts.get(&document.handle.id()).unwrap();
+        if layouts.contains_key(&document.layout_id.id()) {
+            let layout = layouts.get(&document.layout_id.id()).unwrap();
             document.resources = layout.local.clone();
 
+            g_res.storage.insert(document.layout_id.id(), layout.global.clone()); //TODO Fix
             let mut entity = commands.entity(e);
             let resources = ResourceCollection::new(&layout.global, &document.resources);
             spawn_layout(
+                document.layout_id.clone(),
                 document.id,
                 &mut entity,
                 &server,
@@ -189,36 +217,26 @@ pub(crate) fn spawn_command(
     }
 }
 
-#[derive(Component, Reflect)]
-pub struct UiDocumentId {
-    id: Uuid
-}
-
-impl UiDocumentId {
-    pub fn id(&self) -> Uuid {
-        self.id
-    }
-}
-
 pub(crate) fn spawn_layout(
-    id:        Uuid,
+    layout_id: Handle<XmlLayout>,
+    doc_id:    Uuid,
     entity:    &mut EntityCommands,
     server:    &AssetServer,
     library:   &XmlLibrary,
-    tree:      &ParsedTree,
+    tree:      &CompiledNode,
     resources: &ResourceCollection,
 ) {
     entity.insert(UiDocumentId {
-        id
+        id: doc_id,
     });
 
     tree.components.iter().for_each(|(c, _)| {
         c.insert_to(entity, server);
     });
 
-    tree.container_properties.iter().for_each(|(name, property)| {
+    tree.properties.iter().for_each(|(name, property)| {
         if name == "id" {
-            entity.insert(UiId(resources.get(property).unwrap().clone()));
+            entity.insert(UiContainerId(resources.get(property).unwrap().clone()));
         }
         else if let Some(function) = library.functions.get(name.as_str()) {
             if let Some(resource) = resources.get(property) {
@@ -238,7 +256,7 @@ pub(crate) fn spawn_layout(
             return;
         }
 
-        let mut injectors:InjectorComponents = InjectorComponents::new(id);
+        let mut injectors: Injector = Injector::new(doc_id, layout_id.clone());
         let component = Arc::new(RwLock::new(dyn_clone::clone_box(&**c)));
         for ap in vec {
             if !injectors.injectors.contains_key(&ap.property) {
@@ -253,7 +271,7 @@ pub(crate) fn spawn_layout(
     });
 
     if let Some(id) = &tree.id {
-        entity.insert(UiId(id.clone()));
+        entity.insert(UiContainerId(id.clone()));
     }
 
     let functions = &tree.functions;
@@ -270,7 +288,8 @@ pub(crate) fn spawn_layout(
     for container in &tree.containers {
         let mut children = commands.spawn_empty();
         spawn_layout(
-            id,
+            layout_id.clone(),
+            doc_id,
             &mut children,
             &server,
             &library,
@@ -287,7 +306,7 @@ pub(crate) struct UiTemplatePrepared;
 pub(crate) fn spawn_template(
     mut commands:  Commands,
     mut templates: Query<(Entity, &UiDocumentTemplate), Without<UiTemplatePrepared>>,
-    mut query:     Query<(Entity, &UiId, &UiDocumentId)>,
+    mut query:     Query<(Entity, &UiContainerId, &UiDocumentId)>,
     //documents:     Query<&UiDocument>,
 
     layouts:       Res<Layouts>,
@@ -301,18 +320,17 @@ pub(crate) fn spawn_template(
                     continue;
                 }
                 let layout = layouts.get(&template.target_layout.id()).unwrap();
-                let target_template = layout.templates.get(&template.name).unwrap();
+                let mut tree = layout.templates.get(&template.name).unwrap().clone();
 
-                let mut tree = target_template.root.clone();
-
-                let local = &template.resources;
                 //TODO Ui Document resources
+                let local = &template.resources;
                 let resources = ResourceCollection::new(&layout.global, &local);
 
                 set_component_properties(&mut tree, &resources);
 
                 let mut c_commands = commands.entity(c);
                 spawn_layout(
+                    Default::default(), //TODO
                     document_id.id,
                     &mut c_commands,
                     &server,
@@ -329,7 +347,7 @@ pub(crate) fn spawn_template(
     });
 }
 
-fn set_component_properties(tree: &mut ParsedTree, properties: &ResourceCollection) {
+fn set_component_properties(tree: &mut CompiledNode, properties: &ResourceCollection) {
     tree.components.iter_mut().for_each(|(c, vec)| {
         vec.iter().for_each(|ap| {
             let value = properties.get(&ap.property)
@@ -344,111 +362,72 @@ fn set_component_properties(tree: &mut ParsedTree, properties: &ResourceCollecti
     }
 }
 
-#[derive(SystemParam)]
-pub struct UiFunctionRegistry<'w, 's> {
-    functions: ResMut<'w, UiFunctions>,
-    cmd: Commands<'w, 's>,
-}
-
-impl<'w, 's> UiFunctionRegistry<'w, 's> {
-    pub fn register<S, M>(&mut self, name: impl Into<String>, func: S)
-    where
-        S: IntoSystem<In<Entity>, (), M> + 'static,
-    {
-        let id = self.cmd.register_system(func);
-        self.functions.register(name, id);
-    }
-}
-
-#[derive(Resource, Default)]
-pub struct UiFunctions {
-    map: HashMap<String, SystemId<In<Entity>>>,
-}
-
-impl UiFunctions {
-    pub fn register(&mut self, key: impl Into<String>, system_id: SystemId<In<Entity>>) {
-        let key: String = key.into();
-        self.map.insert(key, system_id);
-    }
-
-    pub fn maybe_run(&self, key: &String, entity: Entity, cmd: &mut Commands) {
-        self.map.get(key)
-            .map(|id| {
-                cmd.run_system_with(*id, entity);
-            })
-            .unwrap_or_else(|| error!("[Ui Functions] Function `{key}` is not bound"));
-    }
-}
+type PendingInjections = Vec<(Entity, Arc<RwLock<Box<dyn XmlComponent>>>, String, String)>;
 
 pub(crate) fn sync_local_resources(
     world:  &mut World,
     params: &mut SystemState<(
+        Res<GlobalResources>,
         Res<AssetServer>,
         Query<&UiDocument, Changed<UiDocument>>,
-        Query<(Entity, &mut InjectorComponents)>
+        Query<(Entity, &mut Injector)>,
+        Local<PendingInjections>,
     )>,
 ) {
-    let (server, documents, mut injectors) = params.get_mut(world);
+    let (g_res,
+        server,
+        documents,
+        mut injectors,
+        mut pending_injections) = params.get_mut(world);
     let server = server.clone();
 
-    // Сначала собираем все задачи
-    let mut pending_injections = Vec::new();
-
-    for doc in documents.iter() {
-        for (entity, mut injector) in injectors.iter_mut() {
-            if doc.id != injector.document {
-                continue;
+    fn push(
+        name:     &str,
+        value:    &str,
+        entity:   Entity,
+        injector: &mut Injector,
+        pending_injections: &mut PendingInjections,
+    ) {
+        if let Some(vec) = injector.injectors.get_mut(name) {
+            for (arc, attribute) in vec.iter_mut() {
+                pending_injections.push((
+                    entity,
+                    arc.clone(),
+                    attribute.clone(),
+                    value.to_string(),
+                ));
             }
+        }
+    }
 
-            for (name, value) in doc.resources.iter() {
-                if let Some(vec) = injector.injectors.get_mut(name.as_str()) {
-                    for (arc, attribute) in vec.iter_mut() {
-                        // Сохраняем всё, что нужно для вызова
-                        pending_injections.push((
-                            entity,
-                            arc.clone(),
-                            attribute.clone(),
-                            value.clone(),
-                        ));
-                    }
+    if g_res.is_changed() || g_res.is_added() {
+        for (entity, mut injector) in injectors.iter_mut() {
+            let global_resources = g_res.storage.get(&injector.layout_id.id());
+            if let Some(global_resources) = global_resources {
+                for (name, value) in global_resources.iter() {
+                    push(name, value, entity, &mut injector, &mut *pending_injections);
                 }
             }
         }
     }
 
-    // Потом выполняем инъекции, уже имея полный `&mut World`
-    for (entity, arc, attribute, value) in pending_injections {
-        let writer = arc.write().unwrap();
-        let mut extractor = Extractor::new(world, entity);
-        writer.inject_value(&attribute, &value, &mut extractor, &server);
-    }
-}
-
-/*pub(crate) fn sync_local_resources(
-    mut world:     &mut World,
-    server:        Res<AssetServer>,
-    documents:     Query<&UiDocument, Changed<UiDocument>>,
-    mut injectors: Query<(Entity, &mut InjectorComponents)>
-) {
-    documents.iter().for_each(|doc| {
-        //println!("[Ui Resources] Sync local resources in {}", doc.id);
-        injectors.iter_mut().for_each(|(entity, mut injector)| {
-            if doc.id != injector.document {
-                return;
+    for doc in documents.iter() {
+        for (entity, mut injector) in injectors.iter_mut() {
+            if doc.id != injector.document_id {
+                continue;
             }
 
-            doc.resources.iter().for_each(|(name, value)| {
-                if let Some(vec) = injector.injectors.get_mut(name.as_str()) {
-                    vec.iter_mut().for_each(|(arc, attribute)| {
-                        let mut writer = arc.write().unwrap();
-                        writer.inject_value(&mut world, entity, attribute.as_str(), value.as_str());
-                        writer.parse_attribute(attribute.as_str(), value.as_str());
-                        writer.insert_to(&mut commands, &server);
-                        //println!("[Ui Resources] Sync component {}", entity);
-                    });
-                }
-            });
-        })
-    })
+            for (name, value) in doc.resources.iter() {
+                push(name, value, entity, &mut injector, &mut *pending_injections);
+            }
+        }
+    }
+
+    pending_injections.retain(|(entity, arc, attribute, value)| {
+        let writer = arc.write().unwrap();
+        let mut extractor = Extractor::new(world, *entity);
+        writer.inject_value(&attribute, &value, &mut extractor, &server);
+        println!("Inject value to entity: {}", entity);
+        false
+    });
 }
-*/
