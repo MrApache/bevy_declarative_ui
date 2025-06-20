@@ -1,22 +1,30 @@
 use bevy::asset::AssetServer;
 use bevy::prelude::EntityCommands;
-use crate::prelude::Extractor;
+use crate::injector::Injector;
+use crate::prelude::{Extractor, ValueStorage};
 use crate::xml_component::XmlComponent;
 
 #[derive(Debug, Clone)]
 pub struct ButtonParser;
 
 impl XmlComponent for ButtonParser {
-    fn inject_value(&self, _: &str, _: &str, _: &mut Extractor, _: &AssetServer) {}
+    fn write_value(&mut self, _: &str, _: &ValueStorage) {}
 
     fn insert_to(&self, entity: &mut EntityCommands, _: &AssetServer) {
         entity.insert(bevy::prelude::Button);
     }
 
-    fn clear(&mut self) {
+    fn as_injector(&self) -> Box<dyn Injector> {
+        Box::new(Self)
     }
+}
 
-    fn parse_attribute(&mut self, _: &str, _: &str) -> bool {
-        false
-    }
+impl Injector for ButtonParser {
+    fn inject_value(
+        &self,
+        _: &str,
+        _: &ValueStorage,
+        _: &mut Extractor,
+        _: &AssetServer)
+    {}
 }

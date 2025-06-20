@@ -1,10 +1,25 @@
 use std::str::FromStr;
 use bevy::asset::AssetServer;
 use bevy::prelude::{Color, EntityCommands, Image, ImageNode, NodeImageMode, Rect};
-use crate::prelude::Extractor;
+use crate::injector::Injector;
+use crate::prelude::{Extractor, FromStrTyped, ValueStorage};
 use crate::xml_component::XmlComponent;
 use crate::raw_handle::RawHandle;
-use crate::types::color_str;
+
+pub struct ImageNodeInjector;
+impl Injector for ImageNodeInjector {
+    fn inject_value(&self,name: &str, value: &ValueStorage, extractor: &mut Extractor, server: &AssetServer) {
+        extractor.extract::<ImageNode, _>(|c| {
+            match name {
+                "flip_x" => c.flip_x = *value.read::<bool>(),
+                "flip_y" => c.flip_y = *value.read::<bool>(),
+                "color"  => c.color  = *value.read::<Color>(),
+                "image"  => c.image  = server.load(value.read::<String>()),
+                _ => {},
+            }
+        });
+    }
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct ImageNodeParser {
@@ -17,16 +32,14 @@ pub struct ImageNodeParser {
 }
 
 impl XmlComponent for ImageNodeParser {
-    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, server: &AssetServer) {
-        extractor.extract::<ImageNode, _>(|c| {
-            match name {
-                "flip_x" => c.flip_x = bool::from_str(value).unwrap(),
-                "flip_y" => c.flip_y = bool::from_str(value).unwrap(),
-                "image"  => c.image  = server.load(value),
-                "color"  => c.color  = color_str(value),
-                _ => {},
-            }
-        });
+    fn write_value(&mut self, name: &str, value: &ValueStorage) {
+        match name {
+            "flip_x" => self.flip_x = *value.read::<bool>(),
+            "flip_y" => self.flip_y = *value.read::<bool>(),
+            "color"  => self.color  = *value.read::<Color>(),
+            "image"  => self.image  = RawHandle::new(value.read::<String>().clone()),
+            _ => {},
+        }
     }
 
     fn insert_to(&self, entity: &mut EntityCommands, server: &AssetServer) {
@@ -41,14 +54,8 @@ impl XmlComponent for ImageNodeParser {
         });
     }
 
-    fn clear(&mut self) {
-        let s = ImageNode::default();
-        self.color = s.color;
-        self.rect = s.rect;
-        self.mode = s.image_mode;
-        self.flip_x = s.flip_x;
-        self.flip_y = s.flip_y;
-        self.image = RawHandle::default();
+    fn as_injector(&self) -> Box<dyn Injector> {
+        Box::new(ImageNodeInjector)
     }
 
     fn parse_attribute(&mut self, name: &str, value: &str) -> bool {
@@ -56,7 +63,7 @@ impl XmlComponent for ImageNodeParser {
             "flip_x" => self.flip_x = bool::from_str(value).unwrap(),
             "flip_y" => self.flip_y = bool::from_str(value).unwrap(),
             "image"  => self.image  = RawHandle::new(value.to_string()),
-            "color"  => self.color  = color_str(value),
+            "color"  => self.color  = Color::from_str_typed(value).unwrap(),
             _ => return false,
         }
 

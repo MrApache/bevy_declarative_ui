@@ -1,0 +1,7 @@
+<Layout>
+    <LocalResources>
+        <Property name="Count" type="u32" value="100"/>
+    </LocalResources>
+
+    <Counter value="{Count}"/>
+</Layout>

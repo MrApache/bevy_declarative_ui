@@ -1,8 +1,15 @@
 use std::str::FromStr;
 use bevy::prelude::*;
-use crate::prelude::Extractor;
-use crate::types::parse_flex_direction;
+use crate::injector::Injector;
+use crate::prelude::{Extractor, FromStrTyped, ValueStorage};
 use crate::xml_component::XmlComponent;
+
+pub struct NodeInjector;
+impl Injector for NodeInjector {
+    fn inject_value(&self, name: &str, value: &ValueStorage, extractor: &mut Extractor, _: &AssetServer) {
+        extractor.extract::<Node, _>(|node| set_value_safe(node, name, value));
+    }
+}
 
 #[derive(Default, Debug, Clone)]
 pub struct NodeParser {
@@ -11,274 +18,103 @@ pub struct NodeParser {
 
 fn set_value(node: &mut Node, name:&str, value:&str) -> bool {
     match name {
-        "overflow_x"               => node.overflow.x = parse_overflow_axis(value),
-        "overflow_y"               => node.overflow.y = parse_overflow_axis(value),
-        "overflow_clip_visual_box" => node.overflow_clip_margin.visual_box = parse_overflow_clip_visual_box(value),
+        "overflow_x"               => node.overflow.x = OverflowAxis::from_str_typed(value).unwrap(),
+        "overflow_y"               => node.overflow.y = OverflowAxis::from_str_typed(value).unwrap(),
+        "overflow_clip_visual_box" => node.overflow_clip_margin.visual_box = OverflowClipBox::from_str_typed(value).unwrap(),
         "overflow_clip_margin"     => node.overflow_clip_margin.margin     = f32::from_str(value).unwrap(),
-        "display"                  => node.display         = parse_display(value),
-        "box_sizing"               => node.box_sizing      = parse_box_sizing(value),
-        "position_type"            => node.position_type   = parse_position_type(value),
-        "left"                     => node.left            = parse_val(value),
-        "right"                    => node.right           = parse_val(value),
-        "top"                      => node.top             = parse_val(value),
-        "bottom"                   => node.bottom          = parse_val(value),
-        "width"                    => node.width           = parse_val(value),
-        "height"                   => node.height          = parse_val(value),
-        "min_width"                => node.min_width       = parse_val(value),
-        "min_height"               => node.min_height      = parse_val(value),
-        "max_width"                => node.max_width       = parse_val(value),
-        "max_height"               => node.max_height      = parse_val(value),
+        "display"                  => node.display         = Display::from_str_typed(value).unwrap(),
+        "box_sizing"               => node.box_sizing      = BoxSizing::from_str_typed(value).unwrap(),
+        "position_type"            => node.position_type   = PositionType::from_str_typed(value).unwrap(),
+        "left"                     => node.left            = Val::from_str_typed(value).unwrap(),
+        "right"                    => node.right           = Val::from_str_typed(value).unwrap(),
+        "top"                      => node.top             = Val::from_str_typed(value).unwrap(),
+        "bottom"                   => node.bottom          = Val::from_str_typed(value).unwrap(),
+        "width"                    => node.width           = Val::from_str_typed(value).unwrap(),
+        "height"                   => node.height          = Val::from_str_typed(value).unwrap(),
+        "min_width"                => node.min_width       = Val::from_str_typed(value).unwrap(),
+        "min_height"               => node.min_height      = Val::from_str_typed(value).unwrap(),
+        "max_width"                => node.max_width       = Val::from_str_typed(value).unwrap(),
+        "max_height"               => node.max_height      = Val::from_str_typed(value).unwrap(),
         "aspect_ratio"             => node.aspect_ratio    = f32::from_str(value).ok(),
-        "align_items"              => node.align_items     = parse_align_items(value),
-        "justify_items"            => node.justify_items   = parse_justify_items(value),
-        "align_self"               => node.align_self      = parse_align_self(value),
-        "justify_self"             => node.justify_self    = parse_justify_self(value),
-        "align_content"            => node.align_content   = parse_align_content(value),
-        "justify_content"          => node.justify_content = parse_justify_content(value),
-        "margin"                   => node.margin          = parse_ui_rect(value),
-        "padding"                  => node.padding         = parse_ui_rect(value),
-        "border"                   => node.border          = parse_ui_rect(value),
-        "flex_direction"           => node.flex_direction  = parse_flex_direction(value),
-        "flex_wrap"                => node.flex_wrap       = parse_flex_wrap(value),
+        "align_items"              => node.align_items     = AlignItems::from_str_typed(value).unwrap(),
+        "justify_items"            => node.justify_items   = JustifyItems::from_str_typed(value).unwrap(),
+        "align_self"               => node.align_self      = AlignSelf::from_str_typed(value).unwrap(),
+        "justify_self"             => node.justify_self    = JustifySelf::from_str_typed(value).unwrap(),
+        "align_content"            => node.align_content   = AlignContent::from_str_typed(value).unwrap(),
+        "justify_content"          => node.justify_content = JustifyContent::from_str_typed(value).unwrap(),
+        "margin"                   => node.margin          = UiRect::from_str_typed(value).unwrap(),
+        "padding"                  => node.padding         = UiRect::from_str_typed(value).unwrap(),
+        "border"                   => node.border          = UiRect::from_str_typed(value).unwrap(),
+        "flex_direction"           => node.flex_direction  = FlexDirection::from_str_typed(value).unwrap(),
+        "flex_wrap"                => node.flex_wrap       = FlexWrap::from_str_typed(value).unwrap(),
         "flex_grow"                => node.flex_grow       = f32::from_str(value).unwrap(),
         "flex_shrink"              => node.flex_shrink     = f32::from_str(value).unwrap(),
-        "flex_basis"               => node.flex_basis      = parse_val(value),
-        "row_gap"                  => node.row_gap         = parse_val(value),
-        "column_gap"               => node.column_gap      = parse_val(value),
+        "flex_basis"               => node.flex_basis      = Val::from_str_typed(value).unwrap(),
+        "row_gap"                  => node.row_gap         = Val::from_str_typed(value).unwrap(),
+        "column_gap"               => node.column_gap      = Val::from_str_typed(value).unwrap(),
         _ => return false,
     }
 
     true
 }
 
+fn set_value_safe(node: &mut Node, name:&str, value: &ValueStorage) {
+    match name {
+        "overflow_clip_visual_box" => node.overflow_clip_margin.visual_box = *value.read::<OverflowClipBox>(),
+        "overflow_clip_margin"     => node.overflow_clip_margin.margin     = *value.read::<f32>(),
+        "overflow_x"               => node.overflow.x      = *value.read::<OverflowAxis>(),
+        "overflow_y"               => node.overflow.y      = *value.read::<OverflowAxis>(),
+        "display"                  => node.display         = *value.read::<Display>(),
+        "box_sizing"               => node.box_sizing      = *value.read::<BoxSizing>(),
+        "position_type"            => node.position_type   = *value.read::<PositionType>(),
+
+        "left"                     => node.left            = *value.read::<Val>(),
+        "right"                    => node.right           = *value.read::<Val>(),
+        "top"                      => node.top             = *value.read::<Val>(),
+        "bottom"                   => node.bottom          = *value.read::<Val>(),
+        "width"                    => node.width           = *value.read::<Val>(),
+        "height"                   => node.height          = *value.read::<Val>(),
+        "min_width"                => node.min_width       = *value.read::<Val>(),
+        "min_height"               => node.min_height      = *value.read::<Val>(),
+        "max_width"                => node.max_width       = *value.read::<Val>(),
+        "max_height"               => node.max_height      = *value.read::<Val>(),
+        "aspect_ratio"             => node.aspect_ratio    = *value.read::<Option<f32>>(),
+
+        "align_items"              => node.align_items     = *value.read::<AlignItems>(),
+        "justify_items"            => node.justify_items   = *value.read::<JustifyItems>(),
+        "align_self"               => node.align_self      = *value.read::<AlignSelf>(),
+        "justify_self"             => node.justify_self    = *value.read::<JustifySelf>(),
+        "align_content"            => node.align_content   = *value.read::<AlignContent>(),
+        "justify_content"          => node.justify_content = *value.read::<JustifyContent>(),
+
+        "margin"                   => node.margin          = *value.read::<UiRect>(),
+        "padding"                  => node.padding         = *value.read::<UiRect>(),
+        "border"                   => node.border          = *value.read::<UiRect>(),
+        "flex_direction"           => node.flex_direction  = *value.read::<FlexDirection>(),
+        "flex_wrap"                => node.flex_wrap       = *value.read::<FlexWrap>(),
+        "flex_grow"                => node.flex_grow       = *value.read::<f32>(),
+        "flex_shrink"              => node.flex_shrink     = *value.read::<f32>(),
+        "flex_basis"               => node.flex_basis      = *value.read::<Val>(),
+        "row_gap"                  => node.row_gap         = *value.read::<Val>(),
+        "column_gap"               => node.column_gap      = *value.read::<Val>(),
+        _ => {},
+    }
+}
+
 impl XmlComponent for NodeParser {
-    fn inject_value(&self, name: &str, value: &str, extractor: &mut Extractor, _: &AssetServer) {
-        extractor.extract::<Node, _>(|mut c| {
-            set_value(&mut c, name, value);
-        });
+    fn write_value(&mut self, name: &str, value: &ValueStorage) {
+        set_value_safe(&mut self.node, name, value)
     }
 
     fn insert_to(&self, entity: &mut EntityCommands, _: &AssetServer) {
         entity.insert(self.node.clone());
     }
 
-    fn clear(&mut self) {
-        self.node = Node::default();
+    fn as_injector(&self) -> Box<dyn Injector> {
+        Box::new(NodeInjector)
     }
 
     fn parse_attribute(&mut self, name: &str, value: &str) -> bool {
         set_value(&mut self.node, name, value)
-    }
-}
-
-fn parse_display(str: &str) -> Display {
-    match str {
-        "Flex"  => Display::Flex,
-        "None"  => Display::None,
-        "Block" => Display::Block,
-        "Grid"  => Display::Grid,
-        _ => {
-            error!("Unknown display value: {}", str);
-            Display::default()
-        }
-    }
-}
-
-fn parse_box_sizing(str: &str) -> BoxSizing {
-    match str {
-        "BorderBox"  => BoxSizing::BorderBox,
-        "ContentBox" => BoxSizing::ContentBox,
-        _ => {
-            error!("Unknown box sizing value: {}", str);
-            BoxSizing::default()
-        }
-    }
-}
-
-fn parse_position_type(str: &str) -> PositionType {
-    match str {
-        "Absolute" => PositionType::Absolute,
-        "Relative" => PositionType::Relative,
-        _ => {
-            error!("Unknown position type value: {}", str);
-            PositionType::default()
-        }
-    }
-}
-
-fn parse_overflow_axis(str: &str) -> OverflowAxis {
-    match str {
-        "Visible" => OverflowAxis::Visible,
-        "Hidden"  => OverflowAxis::Hidden,
-        "Scroll"  => OverflowAxis::Scroll,
-        "Clip"    => OverflowAxis::Clip,
-        _ => {
-            error!("Unknown overflow axis value: {}", str);
-            OverflowAxis::default()
-        }
-    }
-}
-
-fn parse_overflow_clip_visual_box(str: &str) -> OverflowClipBox {
-    match str {
-        "ContentBox" => OverflowClipBox::ContentBox,
-        "PaddingBox" => OverflowClipBox::PaddingBox,
-        "BorderBox"  => OverflowClipBox::BorderBox,
-        _ => {
-            error!("Unknown overflow clip visual box value: {}", str);
-            OverflowClipBox::default()
-        }
-    }
-}
-
-fn parse_ui_rect(input: &str) -> UiRect {
-    let mut result = Vec::new();
-
-    for word in input.split_whitespace() {
-        result.push(parse_val(word));
-    }
-
-    match result.len() {
-        1 => UiRect::all(result[0].clone()),
-        2 => UiRect::new(result[0].clone(), result[1].clone(), result[0].clone(), result[1].clone()),
-        3 => UiRect::new(result[0].clone(), result[1].clone(), result[2].clone(), result[1].clone()),
-        4 => UiRect::new(result[0].clone(), result[1].clone(), result[2].clone(), result[3].clone()),
-        _ => panic!("todo"),
-    }
-}
-
-fn parse_val(input: &str) -> Val {
-    if input == "auto" {
-        Val::Auto
-    } else if let Some(px) = input.strip_suffix("px") {
-        return px.parse().ok().map(Val::Px).unwrap();
-    } else if let Some(pc) = input.strip_suffix('%') {
-        return pc.parse().ok().map(Val::Percent).unwrap();
-    } else if let Some(inner) = input.strip_prefix("vw(").and_then(|s| s.strip_suffix(")")) {
-        return inner.parse().ok().map(Val::Vw).unwrap();
-    } else if let Some(inner) = input.strip_prefix("vh(").and_then(|s| s.strip_suffix(")")) {
-        return inner.parse().ok().map(Val::Vh).unwrap();
-    } else if let Some(inner) = input.strip_prefix("vmin(").and_then(|s| s.strip_suffix(")")) {
-        return inner.parse().ok().map(Val::VMin).unwrap();
-    } else if let Some(inner) = input.strip_prefix("vmax(").and_then(|s| s.strip_suffix(")")) {
-        return inner.parse().ok().map(Val::VMax).unwrap();
-    }
-    else {
-        error!("Unknown value: {}", input);
-        Val::default()
-    }
-}
-
-fn parse_align_items(str: &str) -> AlignItems {
-    match str {
-        "Default"   => AlignItems::Default,
-        "Start"     => AlignItems::Start,
-        "End"       => AlignItems::End,
-        "FlexStart" => AlignItems::FlexStart,
-        "FlexEnd"   => AlignItems::FlexEnd,
-        "Center"    => AlignItems::Center,
-        "Baseline"  => AlignItems::Baseline,
-        "Stretch"   => AlignItems::Stretch,
-        _ => {
-            error!("Unknown align items value: {}", str);
-            AlignItems::default()
-        }
-    }
-}
-
-fn parse_justify_items(str: &str) -> JustifyItems {
-    match str {
-        "Default"  => JustifyItems::Default,
-        "Start"    => JustifyItems::Start,
-        "End"      => JustifyItems::End,
-        "Center"   => JustifyItems::Center,
-        "Baseline" => JustifyItems::Baseline,
-        "Stretch"  => JustifyItems::Stretch,
-        _ => {
-            error!("Unknown justify items value: {}", str);
-            JustifyItems::default()
-        }
-    }
-}
-
-fn parse_align_self(str: &str) -> AlignSelf {
-    match str {
-        "Auto"      => AlignSelf::Auto,
-        "Start"     => AlignSelf::Start,
-        "End"       => AlignSelf::End,
-        "FlexStart" => AlignSelf::FlexStart,
-        "FlexEnd"   => AlignSelf::FlexEnd,
-        "Center"    => AlignSelf::Center,
-        "Baseline"  => AlignSelf::Baseline,
-        "Stretch"   => AlignSelf::Stretch,
-        _ => {
-            error!("Unknown align self value: {}", str);
-            AlignSelf::default()
-        }
-    }
-}
-
-fn parse_justify_self(str: &str) -> JustifySelf {
-    match str {
-        "Auto"     => JustifySelf::Auto,
-        "Start"    => JustifySelf::Start,
-        "End"      => JustifySelf::End,
-        "Center"   => JustifySelf::Center,
-        "Baseline" => JustifySelf::Baseline,
-        "Stretch"  => JustifySelf::Stretch,
-        _ =>  {
-            error!("Unknown justify self value: {}", str);
-            JustifySelf::default()
-        }
-    }
-}
-
-fn parse_align_content(str: &str) -> AlignContent {
-    match str {
-        "Default"      => AlignContent::Default,
-        "Start"        => AlignContent::Start,
-        "End"          => AlignContent::End,
-        "FlexStart"    => AlignContent::FlexStart,
-        "FlexEnd"      => AlignContent::FlexEnd,
-        "Center"       => AlignContent::Center,
-        "Stretch"      => AlignContent::Stretch,
-        "SpaceBetween" => AlignContent::SpaceBetween,
-        "SpaceEvenly"  => AlignContent::SpaceEvenly,
-        "SpaceAround"  => AlignContent::SpaceAround,
-        _ => {
-            error!("Unknown align content value: {}", str);
-            AlignContent::Default
-        }
-    }
-}
-
-fn parse_justify_content(str: &str) -> JustifyContent {
-    match str {
-        "Default"      => JustifyContent::Default,
-        "Start"        => JustifyContent::Start,
-        "End"          => JustifyContent::End,
-        "FlexStart"    => JustifyContent::FlexStart,
-        "FlexEnd"      => JustifyContent::FlexEnd,
-        "Center"       => JustifyContent::Center,
-        "Stretch"      => JustifyContent::Stretch,
-        "SpaceBetween" => JustifyContent::SpaceBetween,
-        "SpaceEvenly"  => JustifyContent::SpaceEvenly,
-        "SpaceAround"  => JustifyContent::SpaceAround,
-        _ => {
-            error!("Unknown justify content value: {}", str);
-            JustifyContent::default()
-        }
-    }
-}
-
-fn parse_flex_wrap(str: &str) -> FlexWrap {
-    match str {
-        "NoWrap"      => FlexWrap::NoWrap,
-        "Wrap"        => FlexWrap::Wrap,
-        "WrapReverse" => FlexWrap::WrapReverse,
-        _ => {
-            error!("Unknown flex wrap value: {}", str);
-            FlexWrap::default()
-        }
     }
 }

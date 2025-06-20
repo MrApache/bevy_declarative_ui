@@ -1236,11 +1236,17 @@ name = "bevy_ui_xml"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_ui_xml_parser",
  "dyn-clone",
+]
+
+[[package]]
+name = "bevy_ui_xml_parser"
+version = "0.1.0"
+dependencies = [
  "quick-xml",
- "roxmltree",
+ "regex",
  "thiserror 2.0.12",
- "uuid",
 ]
 
 [[package]]

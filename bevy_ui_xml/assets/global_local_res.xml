@@ -1,0 +1,40 @@
+<Layout>
+    <GlobalResources>
+        <Property name="Count" type="u32" value="1000"/>
+    </GlobalResources>
+
+    <LocalResources>
+        <Property name="Count" type="u32" value="100"/>
+    </LocalResources>
+
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+    <Container>
+        <Counter value="{Count}"/>
+    </Container>
+</Layout>

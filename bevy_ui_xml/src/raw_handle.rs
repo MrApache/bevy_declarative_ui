@@ -12,7 +12,7 @@ impl<A: Asset> Clone for RawHandle<A> {
     fn clone(&self) -> Self {
         Self {
             file: self.file.clone(),
-            ..Self::default()
+            _marker: PhantomData,
         }
     }
 }
@@ -21,7 +21,7 @@ impl<A: Asset> Default for RawHandle<A> {
     fn default() -> Self {
         Self {
             file: None,
-            _marker: Default::default(),
+            _marker: PhantomData,
         }
     }
 }
@@ -30,7 +30,7 @@ impl<A: Asset> RawHandle<A> {
     pub fn new(file: String) -> Self {
         Self {
             file: Some(file),
-            _marker: Default::default(),
+            _marker: PhantomData,
         }
     }
 
@@ -46,7 +46,7 @@ impl<A: Asset> RawHandle<A> {
     pub fn new_opt(file: Option<String>) -> Self {
         Self {
             file,
-            _marker: Default::default(),
+            _marker: PhantomData,
         }
     }
 }
