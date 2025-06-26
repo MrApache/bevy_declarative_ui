@@ -5,5 +5,5 @@ edition = "2024"
 
 [dependencies]
 thiserror = "2.0.12"
-quick-xml = "0.37.5"
 regex = "1.11.1"
+xml_parser = { path = "../xml_parser" }

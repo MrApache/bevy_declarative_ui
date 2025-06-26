@@ -52,26 +52,6 @@ impl CallbacksArguments {
 #[derive(Reflect, Default, Component, Deref, DerefMut)]
 pub struct Callbacks(pub(crate) HashMap<TypeId, String>);
 
-pub(crate) struct CallbackInjector {
-    callback: TypeId
-}
-
-impl CallbackInjector {
-    pub const fn new(callback: TypeId) -> Self {
-        Self {
-            callback
-        }
-    }    
-}
-
-impl Injector for CallbackInjector {
-    fn inject_value(&self, _: &str, value: &ValueStorage, extractor: &mut Extractor, _: &AssetServer) {
-        extractor.extract::<Callbacks, _>(|callbacks| {
-            callbacks.insert(self.callback, value.read::<String>().clone());
-        });
-    }
-}
-
 #[derive(SystemParam)]
 pub struct UiCallbackInvoker<'w, 's> {
     callbacks: Query<'w, 's, &'static Callbacks>,
@@ -133,7 +113,6 @@ pub struct UiFunctions {
     events:    HashMap<String, Box<dyn EventHandler>>,
 }
 
-//Maybe hide
 impl UiFunctions {
     fn register(&mut self, key: impl Into<String>, system_id: SystemId<In<CallbackContext>>) {
         let key: String = key.into();

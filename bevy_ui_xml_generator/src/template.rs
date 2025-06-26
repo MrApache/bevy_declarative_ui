@@ -1,13 +1,12 @@
-use std::collections::HashMap;
-use bevy_ui_xml_parser::{RawResources, Template, XmlLayout};
+use bevy_ui_xml_parser::{Resources, Template, XmlLayout};
 
 use crate::{
-    generate_functions,
+    generate_function_registrations,
+    generate_property_registrations,
+    resources::get_resources,
     module::{
-        GeneratedModule,
         Module
     },
-    resources::get_resources,
     utils::{
         join_usings,
         to_pascal_case,
@@ -16,10 +15,10 @@ use crate::{
 };
 
 pub(super) fn generate_templates(
-    layout:    &XmlLayout,
-    filename:  &str,
-    path:      &str,
-    generated: &mut HashMap<Module, GeneratedModule>,
+    layout:         &XmlLayout,
+    root_module:    &Module,
+    properties_reg: &mut String,
+    functions_reg:  &mut String,
 ) -> String {
     let mut output: String = String::with_capacity(1024);
     let mut module: String = String::with_capacity(256);
@@ -29,19 +28,18 @@ pub(super) fn generate_templates(
         module.push_str("use bevy_ui_xml::prelude::*;");
         module.push_str(&join_usings(&layout.usings));
 
-        let functions = generate_functions(&template.nodes);
-        module.push_str(&functions.output);
         let properties = get_resources(&template.resources, &mut module);
 
-        generated.insert(Module {
-            name: filename.to_string() + "::" + &template.name,
-            path: format!("{path}::{}", template.name),
-        }, GeneratedModule {
-            properties,
-            functions: functions.names,
-        });
+        let tmp_module:Module = Module {
+            name: template.name.clone(),
+            path: root_module.path.clone(),
+        };
 
-        let template_name = &template.name;
+        let property_registrations = generate_property_registrations(&properties, &template.name, &format!("{}::{}", root_module.path, &template.name));
+        let function_registrations = generate_function_registrations(&template.nodes, &mut output, &tmp_module.name);
+        properties_reg.push_str(&property_registrations);
+        functions_reg.push_str(&function_registrations);
+
         let struct_name = to_pascal_case(&template.name);
         if template.resources.is_empty() {
             module.push_str(&zero_properties_struct(&struct_name));
@@ -52,8 +50,13 @@ pub(super) fn generate_templates(
 
         let str_impl = match template.containers.len() {
             0 => panic!(),
-            1 => single_container_impl(&struct_name, &template_name, template.containers.iter().next().unwrap(), &template.resources),
-            _ => "".into()
+            1 => single_container_impl(
+                &struct_name,
+                &template.name,
+                template.containers.iter().next().unwrap(),
+                &template.resources
+            ),
+            _ => String::new()
         };
 
         module.push_str(&str_impl);
@@ -83,7 +86,7 @@ fn struct_with_properties(struct_name: &str, template: &Template) -> String {
     "#)
 }
 
-fn single_container_impl(struct_name: &str, template_name: &str, container: &str, resources: &RawResources) -> String {
+fn single_container_impl(struct_name: &str, template_name: &str, container: &str, resources: &Resources) -> String {
     let mut adds: String = String::with_capacity(128);
     resources.iter().for_each(|(name, _)| {
         let snake_case_name = to_snake_case(name);

@@ -3,10 +3,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
-use crate::prelude::{CallbacksArguments, CallbackInjector, Callbacks, Extractor, GlobalResources, UiResources, ValueStorage};
-use crate::xml_parser::XmlLayout;
-use crate::{Layouts, XmlLibrary};
-use crate::injector::{Injector, ValueInjectors};
+use crate::prelude::*;
+use crate::{Layouts};
 use crate::parser::{CompiledLayout, CompiledNode, FunctionType, LayoutCompiler};
 use crate::resources::Storage;
 use crate::templates::*;
@@ -289,24 +287,6 @@ fn insert_components(
                 callback.insert_callback(entity);
                 callbacks.insert(callback.type_id(), function.value.to_string());
             }
-            FunctionType::Property(property) => {
-                let type_id: &TypeId = types.get(property)
-                    .expect(&format!("Type Id for property '{}' not found", property));
-
-                if !injectors.injectors.contains_key(type_id) {
-                    injectors.injectors.insert(*type_id, Vec::new());
-                }
-
-                let injector: CallbackInjector = CallbackInjector::new(callback.type_id());
-                let boxed_injector: Box<dyn Injector> = Box::new(injector);
-
-                injectors.injectors.get_mut(type_id)
-                    .unwrap()
-                    .push((Arc::new(boxed_injector), name.clone()));
-
-                callback.insert_callback(entity);
-                callbacks.insert(callback.type_id(), function.value.clone());
-            },
             FunctionType::CallFunction(args) => {
                 callback.insert_callback(entity);
                 callbacks.insert(callback.type_id(), function.value.to_string());
@@ -532,26 +512,6 @@ fn write_default_values_in_template(
             let storage = ValueStorage::new(&storage.storage);
             component.value.write_value(&ap.attribute, &storage);
         })
-    });
-
-    tree.functions.iter_mut().for_each(|(_, function)| {
-        if let FunctionType::Property(property) = &function.kind {
-            let type_id: &TypeId = types.get(property)
-                .expect(&format!("Type Id for property '{}' not found", property));
-
-            let storage = if let Some(local) = local.get_property(*type_id) {
-                local
-            }
-            else if let Some(global) = global.get_property(*type_id) {
-                global
-            }
-            else {
-                panic!("Type Id for property '{}' not found", property);
-            };
-            let storage: ValueStorage<'_> = ValueStorage::new(&storage.storage);
-            //println!("Insert value to {} with {}", name, storage.read::<String>());
-            function.value = storage.read::<String>().clone();
-        }
     });
 
     for container in &mut tree.containers {

@@ -1,6 +1,6 @@
 use core::panic;
 use std::{collections::HashMap, str::FromStr};
-use bevy_ui_xml_parser::{NodeValue, Tag, UiNode};
+use bevy_ui_xml_parser::{NodeValue, UiNode};
 
 #[derive(Default)]
 pub(super) struct Functions {
@@ -125,19 +125,19 @@ struct Function {
     args: Vec<String>,
 }
 
-pub(super) fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
+fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
     let mut prepared_functions: Functions = Functions::default();
 
     let mut functions = HashMap::<String, Function>::new();
     nodes.iter().for_each(|node| {
-        if node.tag != Tag::Container {
+        if !node.tag.is_container {
             return;
         }
         let functions_tmp = generate_functions(&node.children);
         prepared_functions.names.extend(functions_tmp.names);
         prepared_functions.output.push_str(&functions_tmp.output);
 
-        node.attributes.iter().for_each(|attribute| {
+        node.tag.attributes.iter().for_each(|attribute| {
             let func: Function = match &attribute.value {
                 NodeValue::CallFunction { name, args } => generate_function(name, args),
                 //NodeValue::CallPropertyFunction { name, args } => generate_bindable_function(name, args),
@@ -160,4 +160,20 @@ pub(super) fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
     });
 
     prepared_functions
+}
+
+pub(super) fn generate_function_registrations(nodes: &Vec<UiNode>, output: &mut String, module_name: &str) -> String {
+    let mut function_registrations: String = String::new();
+    let functions = generate_functions(nodes);
+    output.push_str(&functions.output);
+    for function in functions.names {
+        let function_path = if module_name.is_empty() {
+            function.clone()
+        } else {
+            format!("{}::{}", module_name, function)
+        };
+        function_registrations.push_str(&format!("functions.register(\"{function}\", {function_path});"));
+    }
+
+    function_registrations
 }

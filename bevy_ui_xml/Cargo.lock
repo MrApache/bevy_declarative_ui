@@ -1244,9 +1244,9 @@ dependencies = [
 name = "bevy_ui_xml_parser"
 version = "0.1.0"
 dependencies = [
- "quick-xml",
  "regex",
  "thiserror 2.0.12",
+ "xml_parser",
 ]
 
 [[package]]
@@ -3395,15 +3395,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "afbdc74edc00b6f6a218ca6a5364d6226a259d4b8ea1af4a0ea063f27e179f4d"
 
 [[package]]
-name = "quick-xml"
-version = "0.37.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "331e97a1af0bf59823e6eadffe373d7b27f485be8748f71471c662c1f269b7fb"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5102,6 +5093,13 @@ name = "xml-rs"
 version = "0.8.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a62ce76d9b56901b19a74f19431b0d8b3bc7ca4ad685a746dfd78ca8f4fc6bda"
+
+[[package]]
+name = "xml_parser"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.12",
+]
 
 [[package]]
 name = "yazi"

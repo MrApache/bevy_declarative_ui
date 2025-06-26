@@ -1,6 +1,6 @@
 use bevy::asset::{AssetLoader, AsyncReadExt, LoadContext};
 use bevy::prelude::*;
-use bevy_ui_xml_parser::{parse_layout, PropertyValue, RawResources, Template, UiNode, XmlLayoutError};
+use bevy_ui_xml_parser::{LayoutReader, PropertyValue, Resources, Template, UiNode, XmlLayoutError};
 
 #[derive(Default, Debug)]
 pub(crate) struct LayoutPath {
@@ -11,8 +11,8 @@ pub(crate) struct LayoutPath {
 #[derive(Asset, TypePath, Default, Debug)]
 pub struct XmlLayout {
     pub(crate) path:       LayoutPath,
-    pub(crate) local:      RawResources,
-    pub(crate) global:     RawResources,
+    pub(crate) local:      Resources,
+    pub(crate) global:     Resources,
     pub(crate) templates:  Vec<Template>,
     pub(crate) root_nodes: Vec<UiNode>,
 }
@@ -50,7 +50,10 @@ impl AssetLoader for XmlLoader {
     {
         let mut string:String = String::new();
         reader.read_to_string(&mut string).await?;
-        let result = parse_layout(&string);
+
+        let path = ctx.path().display().to_string();
+        let mut reader = LayoutReader::new(&string, path.as_str());
+        let result = reader.parse_layout();
         if let Ok(layout) = result {
             Ok(XmlLayout {
                 path:       LayoutPath {

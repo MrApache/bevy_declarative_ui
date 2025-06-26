@@ -1,15 +1,14 @@
-use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use bevy_ui_xml_parser::parse_layout;
+use bevy_ui_xml_parser::{LayoutReader, UiNode, XmlLayout};
 
-use crate::resources::write_resources;
+use crate::resources::{generate_property_registrations, write_resources};
+use crate::functions::{generate_function_registrations};
 use crate::template::generate_templates;
-use crate::functions::generate_functions;
-use crate::module::{GeneratedModule, Module};
 use crate::utils::join_usings;
+use crate::module::Module;
 
 mod resources;
 mod template;
@@ -36,42 +35,59 @@ fn normalize_path(path: &str) -> String {
     without_xml.replace(['/', '\\'], "::")
 }
 
-fn generate_plugin(usings: &str, output_dir: &str, generated: HashMap<Module, GeneratedModule>) {
-    let mut modules = String::new();
-    let mut property_registrations: String = String::new();
-    let mut function_registrations: String = String::new();
+pub fn generate_modules(assets_dir: PathBuf, output_dir: &str) -> Vec<PathBuf> {
+    let mut xml_files: Vec<PathBuf> = Vec::new();
+    let ap: &Path = Path::new(&assets_dir);
+    collect_xml_files(&ap, &mut xml_files);
 
-    generated.iter().for_each(|(module_def, module_decl)| {
-        if module_def.name.contains("::") {
-            modules.push_str(&format!("use self::{};\n", module_def.name));
-        }
-        else {
-            modules.push_str(&format!("pub mod {};\n", module_def.name));
-        }
-        for property in &module_decl.properties {
-            let name = &property.name;
-            let type_ = &property.type_;
-            let property_path: String = format!("{}::{}", module_def.name, name);
-            let path = &module_def.path;
-            let closure: String = format!("r\"{path}\", \"{name}\" , || Box::<TypedStorage<{type_}>>::new(TypedStorage::default())");
-            property_registrations.push_str(&format!("library.add_property::<{property_path}>({closure});\n"));
-        }
+    for path in &xml_files {
+        let layout_path = normalize_path(&path.strip_prefix(ap).unwrap().to_str().unwrap());
+        let filename = path.file_stem().unwrap().to_string_lossy() + "_xml";
+        let module_dir = Path::new(output_dir)
+            .join("bevy_ui_xml_generated")
+            .join(filename.to_string());
+        fs::create_dir_all(&module_dir).unwrap();
+        let module = Module {
+            name: filename.to_string(),
+            path: layout_path.clone(),
+        };
 
-        for function in &module_decl.functions {
-            let path: String = format!("{}::{}", module_def.name, function);
-            function_registrations.push_str(&format!("functions.register(\"{function}\", {path});"));
+        let content = fs::read_to_string(&path).unwrap();
+        let mut reader = LayoutReader::new(&content, path.to_str().unwrap());
+        let result = reader.parse_layout();
+        if result.is_err() {
+            panic!("{}", result.unwrap_err());
+            continue;
         }
-    });
+        generate_module(result.unwrap(), &module, &module_dir);
+    }
 
-    let content = format!(r#"
-    {usings}
-    {modules}
+    xml_files
+}
+
+fn generate_module(layout: XmlLayout, module: &Module, module_dir: &PathBuf) {
+    let mut output: String = String::new();
+    output.push_str("use bevy::ecs::system::*;");
+    output.push_str("use bevy_ui_xml::prelude::*;");
+    output.push_str("use bevy::prelude::{Mut, App, Plugin};");
+    output.push_str(&join_usings(&layout.usings));
+
+    let mut properties = vec![];
+    write_resources(&layout.global, &mut output, &mut properties);
+    write_resources(&layout.local, &mut output, &mut properties);
+
+    let mut property_registrations = generate_property_registrations(&properties, &String::new(), &module.path);
+    let mut function_registrations = generate_function_registrations(&layout.root_nodes, &mut output, &String::new());
+    let binding_registrations = generate_binding_registration(&layout.root_nodes);
+
+    if !layout.templates.is_empty() {
+        output.push_str(&generate_templates(&layout, module, &mut property_registrations, &mut function_registrations));
+    }
+
+    output.push_str(&format!(r#"
     pub struct XmlGeneratedPlugin;
-    impl bevy::prelude::Plugin for XmlGeneratedPlugin {{
-        fn build(&self, app: &mut bevy::prelude::App) {{
-            use bevy_ui_xml::prelude::*;
-            use bevy::prelude::Mut;
-            use bevy::ecs::system::SystemState;
+    impl Plugin for XmlGeneratedPlugin {{
+        fn build(&self, app: &mut App) {{
 
             let mut world = app.world_mut();
             let mut library: Mut<XmlLibrary> = world.resource_mut::<XmlLibrary>();
@@ -83,75 +99,32 @@ fn generate_plugin(usings: &str, output_dir: &str, generated: HashMap<Module, Ge
             let mut functions = state.get_mut(world);
             {function_registrations}
 
+            {binding_registrations}
+
             state.apply(world);
         }}
     }}
-    "#);
+    "#));
 
-    let generated_file = Path::new(output_dir).join("bevy_ui_xml_generated/mod.rs");
+    let generated_file = module_dir.join("mod.rs");
     let mut file = File::create(&generated_file).unwrap();
-    file.write_all(content.as_bytes()).unwrap();
+    file.write_all(output.as_bytes()).unwrap();
     let _ = Command::new("rustfmt").arg(&generated_file).status();
-
 }
 
-pub fn generate_modules(assets_dir: PathBuf, output_dir: &str) -> Vec<PathBuf> {
-    let mut usings: HashSet<String> = HashSet::default();
-    let mut generated: HashMap<Module, GeneratedModule> = HashMap::new();
-    let mut xml_files: Vec<PathBuf> = Vec::new();
-    let ap: &Path = Path::new(&assets_dir);
-    collect_xml_files(&ap, &mut xml_files);
-
-    let mut output = String::with_capacity(2048);
-    for path in &xml_files {
-        output.clear();
-
-        let layout_path = normalize_path(&path.strip_prefix(ap).unwrap().to_str().unwrap());
-        let content = fs::read_to_string(&path).unwrap();
-        let filename = path.file_stem().unwrap().to_string_lossy() + "_xml";
-        let module_dir = Path::new(output_dir)
-            .join("bevy_ui_xml_generated")
-            .join(filename.to_string());
-
-        fs::create_dir_all(&module_dir).unwrap();
-        let module = Module {
-            name: filename.to_string(),
-            path: layout_path.clone(),
-        };
-        generated.insert(module.clone(), GeneratedModule::default());
-
-        let result = parse_layout(&content);
-
-        if let Ok(layout) = result {
-            usings.extend(layout.usings.iter().cloned());
-            output.push_str("use bevy::ecs::system::*;");
-            output.push_str("use bevy_ui_xml::prelude::*;");
-            output.push_str(&join_usings(&layout.usings));
-
-            let mut properties = vec![];
-            write_resources(&layout.global, &mut output, &mut properties);
-            write_resources(&layout.local, &mut output, &mut properties);
-            
-            if !layout.templates.is_empty() {
-                output.push_str(&generate_templates(&layout, &filename, &layout_path, &mut generated));
+fn generate_binding_registration(nodes: &Vec<UiNode>) -> String {
+    let mut output: String = String::new();
+    nodes.iter().for_each(|node| {
+        node.tag.attributes.iter().for_each(|attribute| {
+            match &attribute.value {
+                bevy_ui_xml_parser::NodeValue::Binding(value) => {
+                    output.push_str(&format!("functions.register(\"{value}\", {value});"));
+                }
+                _ => {},
             }
+        });
+        output.push_str(&generate_binding_registration(&node.children));
+    });
 
-            let functions = generate_functions(&layout.root_nodes);
-            output.push_str(&functions.output);
-            generated.get_mut(&module).unwrap().functions.extend(functions.names);
-
-            properties.into_iter().for_each(|property| {
-                generated.get_mut(&module).unwrap().properties.push(property);
-            });
-
-            let generated_file = module_dir.join("mod.rs");
-            let mut file = File::create(&generated_file).unwrap();
-            file.write_all(output.as_bytes()).unwrap();
-
-            let _ = Command::new("rustfmt").arg(&generated_file).status();
-        }
-    }
-
-    generate_plugin(&join_usings(&usings), output_dir, generated);
-    xml_files
+    output
 }

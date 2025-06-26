@@ -2,7 +2,7 @@ use std::any::TypeId;
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Debug, Formatter};
 use bevy::prelude::*;
-use bevy_ui_xml_parser::{NodeValue, RawResources, Tag, UiNode};
+use bevy_ui_xml_parser::{Resources, NodeValue, UiNode};
 use crate::prelude::*;
 use crate::resources::Storage;
 use crate::xml_parser::LayoutPath;
@@ -53,7 +53,6 @@ pub(crate) struct Function {
 #[derive(Debug, Clone)]
 pub(crate) enum FunctionType {
     Value,
-    Property(String),
     CallFunction(String),
 }
 
@@ -98,25 +97,14 @@ impl<'a> LayoutCompiler<'a> {
             self.compile_node(&node, &mut compiled_node);
         });
 
-        node.attributes.iter().for_each(|attr| {
+        node.tag.attributes.iter().for_each(|attr| {
             match attr.name.as_str() {
                 "id" => compiled_node.id = Some(attr.value.read_value()),
                 val if self.library.functions.contains_key(val) => {
                     let function = match &attr.value {
-                        NodeValue::Value(name) => Function {
-                            value: name.clone(),
+                        NodeValue::Binding(value) => Function {
+                            value: value.clone(),
                             kind: FunctionType::Value,
-                        },
-                        NodeValue::Property(property) => {
-                            compiled_node.properties.insert(attr.name.clone(), property.clone());
-                            if let Some(value) = self.layout.get_resource(property.as_str()) {
-                                Function {
-                                    value: value.value.clone(),
-                                    kind: FunctionType::Property(property.clone()),
-                                }
-                            } else {
-                                return;
-                            }
                         },
                         NodeValue::CallFunction { name, args } => {
                             Function {
@@ -124,18 +112,7 @@ impl<'a> LayoutCompiler<'a> {
                                 kind: FunctionType::CallFunction(args.join("")),
                             }
                         },
-                        //TODO Fix
-                        NodeValue::CallPropertyFunction { name, args: _ } => {
-                            compiled_node.properties.insert(attr.name.clone(), name.clone());
-                            if let Some(value) = self.layout.get_resource(name.as_str()) {
-                                Function {
-                                    value: value.value.clone(),
-                                    kind: FunctionType::Property(name.clone()),
-                                }
-                            } else {
-                                return;
-                            }
-                        }
+                        _ => panic!("Unsupported binding type"),
                     };
                     compiled_node.functions.insert(attr.name.to_string(), function);
                 },
@@ -147,37 +124,32 @@ impl<'a> LayoutCompiler<'a> {
     }
 
     fn compile_component(&self, node: &UiNode) -> Component {
-        let Tag::Component(ref name) = node.tag else {
-            panic!("expected Tag::Component");
-        };
-
+        let name = &node.tag.name;
         let mut properties: Vec<AttributeProperty> = Vec::new();
-        let mut component: Box<dyn XmlComponent> = self.library.get_component(&name);
-        node.attributes.iter().for_each(|attr| {
+        let mut component: Box<dyn XmlComponent> = self.library.get_component(name);
+        node.tag.attributes.iter().for_each(|attr| {
 
             let value = match &attr.value {
                 NodeValue::Value(value) => &value,
-                NodeValue::Property(property) => {
+                NodeValue::Local(value) | NodeValue::Global(value) => {
                     properties.push(AttributeProperty {
                         attribute: attr.name.clone(),
-                        property:  property.clone(),
+                        property:  value.clone(),
                     });
 
-                    if let Some(prop) = self.layout.local.get(&property) {
+                    if let Some(prop) = self.layout.local.get(&value) {
                         &prop.value
                     }
-                    else if let Some(prop) = self.layout.global.get(&property) {
+                    else if let Some(prop) = self.layout.global.get(&value) {
                         &prop.value
                     }
                     else {
                         dbg!(&self.layout.local);
                         dbg!(&self.layout.global);
-                        panic!("TODO: {}", &property);
+                        panic!("TODO: {}", &value);
                     }
-                },
-                _ => panic!("Unsupported binding type"),
-                //NodeValue::CallFunction { name, args } => todo!(),
-                //NodeValue::CallPropertyFunction { name, args } => todo!(),
+                }
+                other => panic!("Unsupported binding type: {other:?}"),
             };
 
             if !component.parse_attribute(&attr.name, value) {
@@ -192,7 +164,7 @@ impl<'a> LayoutCompiler<'a> {
     }
 
     fn compile_node(&self, node: &UiNode, compiled_node: &mut CompiledNode) {
-        if node.tag == Tag::Container {
+        if node.tag.is_container {
             compiled_node.containers.push(self.compile_container(node))
         }
         else {
@@ -221,23 +193,7 @@ impl<'a> LayoutCompiler<'a> {
         map
     }
 
-/*    fn get_types(&self) -> HashMap<String, TypeId> {
-        let storages = self.library.storages
-            .get(self.layout.path.current.as_str())
-            .unwrap_or_else(|| panic!("Layout '{}' not found", self.layout.path.current));
-
-        self.layout.local.iter()
-            .chain(self.layout.global.iter())
-            .map(|(n, _)| {
-                let (type_id, _) = storages
-                    .get(n)
-                    .unwrap_or_else(|| panic!("Type '{}' not found on layout: {}", n, self.layout.path));
-                (n.to_string(), *type_id)
-            })
-            .collect()
-    }
-*/
-    fn compile_resources(&self, resources: &mut UiResources, path: &str, raw_resources: &RawResources, is_inherit: bool) {
+    fn compile_resources(&self, resources: &mut UiResources, path: &str, raw_resources: &Resources, is_inherit: bool) {
         raw_resources.iter().for_each(|(k, v)| {
             let (id, factory) = self.library.storages.get(path)
                 .expect(&format!("Path '{}' not found", path))
@@ -252,14 +208,14 @@ impl<'a> LayoutCompiler<'a> {
         });
     }
 
-    fn compile_local_resources(&self, local: &RawResources, global: &RawResources) -> UiResources {
+    fn compile_local_resources(&self, local: &Resources, global: &Resources) -> UiResources {
         let mut resources: UiResources = UiResources::default();
         self.compile_resources(&mut resources, &self.layout.path.global, global, true);
         self.compile_resources(&mut resources, &self.layout.path.current, local, false);
         resources
     }
 
-    fn compile_global_resources(&self, global: &RawResources) -> UiResources {
+    fn compile_global_resources(&self, global: &Resources) -> UiResources {
         let mut resources: UiResources = UiResources::default();
         self.compile_resources(&mut resources, &self.layout.path.global, global, false);
         resources
@@ -305,7 +261,7 @@ impl<'a> LayoutCompiler<'a> {
 #[cfg(test)]
 mod tests {
     use bevy::prelude::Color;
-    use bevy_ui_xml_parser::parse_layout;
+    use bevy_ui_xml_parser::LayoutReader;
     use crate::parser::{CompiledLayout, LayoutCompiler};
     use crate::prelude::{TypedStorage, XmlLayout};
     use crate::resources::PropertyType;
@@ -370,7 +326,7 @@ mod tests {
 "#;
     #[test]
     fn compile_layout() {
-        let layout = parse_layout(&CORRECT_XML).unwrap();
+        let layout = LayoutReader::new(&CORRECT_XML, "").parse_layout().unwrap();
         let mut layout = XmlLayout {
             path: LayoutPath {
                 current: "layout".to_string(),

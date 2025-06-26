@@ -8,10 +8,3 @@ pub(super) struct Module {
     pub name: String,
     pub path: String,
 }
-
-
-#[derive(Default)]
-pub(super) struct GeneratedModule {
-    pub properties: Vec<Property>,
-    pub functions:  Vec<String>, //Function names
-}
