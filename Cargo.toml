@@ -1,3 +1,22 @@
 [workspace]
-members = ["bevy_declarative_ui", "ui_generator", "bevy_declarative_ui_parser", "dynamic_ui", "example"]
+members = ["crates/*"]
 resolver = "2"
+
+[workspace.dependencies]
+
+thiserror = "2.0.14"
+regex = "1.11.1"
+rayon = "1.11.0"
+log = "0.4.27"
+
+bevy = "0.16.1"
+dyn-clone = "1.0.20"
+
+tempfile = "3.20.0"
+itertools = "0.14.0"
+
+syn = { version = "2.0.105", features = ["full", "extra-traits", "visit"] }
+quote = "1.0.40"
+walkdir = "2.5.0"
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.142"

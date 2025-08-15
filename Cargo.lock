@@ -343,7 +343,7 @@ dependencies = [
  "ron",
  "serde",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "thread_local",
  "tracing",
  "uuid",
@@ -366,7 +366,7 @@ dependencies = [
  "ctrlc",
  "downcast-rs",
  "log",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "variadics_please",
  "wasm-bindgen",
  "web-sys",
@@ -404,7 +404,7 @@ dependencies = [
  "ron",
  "serde",
  "stackfuture",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
  "uuid",
  "wasm-bindgen",
@@ -454,7 +454,7 @@ dependencies = [
  "derive_more",
  "encase",
  "serde",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "wgpu-types",
 ]
 
@@ -484,7 +484,7 @@ dependencies = [
  "radsort",
  "serde",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
 ]
 
@@ -505,7 +505,7 @@ dependencies = [
  "log",
  "rayon",
  "regex",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
 ]
 
 [[package]]
@@ -561,7 +561,7 @@ dependencies = [
  "nonmax",
  "serde",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "variadics_please",
 ]
 
@@ -600,7 +600,7 @@ dependencies = [
  "bevy_time",
  "bevy_utils",
  "gilrs",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
 ]
 
@@ -672,7 +672,7 @@ dependencies = [
  "serde",
  "serde_json",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
 ]
 
@@ -699,7 +699,7 @@ dependencies = [
  "rectangle-pack",
  "ruzstd",
  "serde",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
  "wgpu-types",
 ]
@@ -719,7 +719,7 @@ dependencies = [
  "derive_more",
  "log",
  "smol_str",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
 ]
 
 [[package]]
@@ -735,7 +735,7 @@ dependencies = [
  "bevy_reflect",
  "bevy_window",
  "log",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
 ]
 
 [[package]]
@@ -827,7 +827,7 @@ dependencies = [
  "rand_distr",
  "serde",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "variadics_please",
 ]
 
@@ -851,7 +851,7 @@ dependencies = [
  "bytemuck",
  "hexasphere",
  "serde",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
  "wgpu-types",
 ]
@@ -895,7 +895,7 @@ dependencies = [
  "radsort",
  "smallvec",
  "static_assertions",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
 ]
 
@@ -969,7 +969,7 @@ dependencies = [
  "serde",
  "smallvec",
  "smol_str",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "uuid",
  "variadics_please",
  "wgpu-types",
@@ -1032,7 +1032,7 @@ dependencies = [
  "send_wrapper",
  "serde",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
  "variadics_please",
  "wasm-bindgen",
@@ -1069,7 +1069,7 @@ dependencies = [
  "bevy_utils",
  "derive_more",
  "serde",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "uuid",
 ]
 
@@ -1178,7 +1178,7 @@ dependencies = [
  "serde",
  "smallvec",
  "sys-locale",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
  "unicode-bidi",
 ]
@@ -1213,7 +1213,7 @@ dependencies = [
  "bevy_utils",
  "derive_more",
  "serde",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
 ]
 
 [[package]]
@@ -1247,7 +1247,7 @@ dependencies = [
  "nonmax",
  "smallvec",
  "taffy",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "tracing",
 ]
 
@@ -1893,9 +1893,9 @@ checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
 
 [[package]]
 name = "dyn-clone"
-version = "1.0.19"
+version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
+checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "dynamic_ui"
@@ -2777,7 +2777,7 @@ dependencies = [
  "spirv",
  "strum",
  "termcolor",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "unicode-xid",
 ]
 
@@ -3527,9 +3527,9 @@ checksum = "20675572f6f24e9e76ef639bc5552774ed45f1c30e2951e1e99c59888861c539"
 
 [[package]]
 name = "rayon"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b418a60154510ca1a002a752ca9714984e21e4241e804d32555251faf8b78ffa"
+checksum = "368f01d005bf8fd9b1206fb6fa653e6c4a81ceb1466406b81792d87c5677a58f"
 dependencies = [
  "either",
  "rayon-core",
@@ -3537,9 +3537,9 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.12.1"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1465873a3dfdaa8ae7cb14b4383657caab0b3e8a0aa9ae8e04b044854c8dfce2"
+checksum = "22e18b0f0062d30d4230b2e85ff77fdfe4326feb054b9783a3460d8435c8ab91"
 dependencies = [
  "crossbeam-deque",
  "crossbeam-utils",
@@ -3782,9 +3782,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.140"
+version = "1.0.142"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
+checksum = "030fedb782600dcbd6f02d479bf0d817ac3bb40d644745b769d6a96bc3afc5a7"
 dependencies = [
  "itoa",
  "memchr",
@@ -3930,9 +3930,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.104"
+version = "2.0.105"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17b6f705963418cdb9927482fa304bc562ece2fdd4f616084c50b7023b435a40"
+checksum = "7bc3fcb250e53458e712715cf74285c1f889686520d79294a9ef3bd7aa1fc619"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4006,11 +4006,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "2.0.12"
+version = "2.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567b8a2dae586314f7be2a752ec7474332959c6460e02bde30d702a66d488708"
+checksum = "0b0949c3a6c842cbde3f1686d6eea5a010516deb7085f79db747562d4102f41e"
 dependencies = [
- "thiserror-impl 2.0.12",
+ "thiserror-impl 2.0.14",
 ]
 
 [[package]]
@@ -4026,9 +4026,9 @@ dependencies = [
 
 [[package]]
 name = "thiserror-impl"
-version = "2.0.12"
+version = "2.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f7cf42b4507d8ea322120659672cf1b9dbb93f8f2d4ecfd6e51350ff5b17a1d"
+checksum = "cc5b44b4ab9c2fdd0e0512e6bece8388e214c0749f5862b114cc5b7a25daf227"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4464,7 +4464,7 @@ dependencies = [
  "raw-window-handle",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "wgpu-hal",
  "wgpu-types",
 ]
@@ -4507,7 +4507,7 @@ dependencies = [
  "renderdoc-sys",
  "rustc-hash 1.1.0",
  "smallvec",
- "thiserror 2.0.12",
+ "thiserror 2.0.14",
  "wasm-bindgen",
  "web-sys",
  "wgpu-types",

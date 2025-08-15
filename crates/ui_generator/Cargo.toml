@@ -1,0 +1,15 @@
+[package]
+name = "ui_generator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy_declarative_ui_parser = { path = "../bevy_declarative_ui_parser", features = ["node_span"] }
+tempfile.workspace = true
+itertools.workspace = true
+
+syn.workspace = true
+quote.workspace = true
+walkdir.workspace = true
+serde.workspace = true
+serde_json.workspace = true

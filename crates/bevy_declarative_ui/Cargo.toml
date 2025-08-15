@@ -6,9 +6,8 @@ edition = "2024"
 [features]
 dynamic = ["dynamic_ui"]
 
-
 [dependencies]
-bevy = "0.16.1"
-dyn-clone = "1.0.19"
+bevy.workspace = true 
+dyn-clone.workspace = true
 bevy_declarative_ui_parser = {path = "../bevy_declarative_ui_parser" }
 dynamic_ui = { path = "../dynamic_ui", optional = true }

@@ -7,4 +7,4 @@ edition = "2024"
 ui_generator = { path = "../ui_generator" }
 
 [dependencies]
-bevy = "0.16.1"
+bevy.workspace = true
