@@ -1,0 +1,12 @@
+<Layout>
+    <Use>bevy::prelude::*</Use>
+    <Node width="100%" height="100%"/>
+    <Container id="PlayerList">
+        <Text self="Player list:"/>
+    </Container>
+    <ItemTemplate source="{Resource Players, Path=online}">
+        <Container>
+            <ImageBox width="{Resource Target=Globals, Path=width}" height="15px" image="{Item avatar, Mode=Read, Converter=AsSprite}"/>
+        </Container>
+    </ItemTemplate>
+</Layout>

@@ -1,0 +1,3 @@
+<Layout>
+    <Node width="{Component Enemy, Target=PlayerEnemy, Target=Camera, Mode=Read, Fallback=100px, Converter=Round, Target=Target}"/>
+</Layout>

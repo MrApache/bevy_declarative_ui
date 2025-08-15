@@ -1,9 +1,0 @@
-[package]
-name = "bevy_ui_xml"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-bevy = "0.16.1"
-dyn-clone = "1.0.19"
-bevy_ui_xml_parser = {path = "../bevy_ui_xml_parser"}

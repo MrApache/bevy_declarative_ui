@@ -1,0 +1,7 @@
+<Layout>
+    <Container>
+        <ItemTemplate source="{Component Skills, Path=0, Filters={Player, !Bot, !Enemy}">
+            <ImageNode image="{Asset ui/skills/spritesheet.png}" slice="{Item image_slice}"/>
+        </ItemTemplate>
+    </Container>
+</Layout>

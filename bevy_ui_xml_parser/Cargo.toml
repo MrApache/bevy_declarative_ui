@@ -1,9 +1,0 @@
-[package]
-name = "bevy_ui_xml_parser"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-thiserror = "2.0.12"
-regex = "1.11.1"
-xml_parser = { path = "../xml_parser" }

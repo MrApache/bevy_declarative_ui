@@ -1,0 +1,36 @@
+<Layout>
+    <LocalResources>
+        <Property name="Count" type="u32" value="1000"/>
+    </LocalResources>
+
+    <Container>
+        <Counter value="{Resource Purse, Path=[Simple::One].read(), Mode=Read}"/>
+        <Container>
+            <Counter value="{Resource Purse, Path=[Simple::Second]}"/>
+        </Container>
+        <ImageNode image="{Asset asset/image.png}"/>
+    </Container>
+    <Container>
+        <Text value="{Resource Constants, Path=get_text()}"/>
+    </Container>
+    <Container>
+        <Text value="{Component Health, Path=float, Mode=ReadWrite, Filters=Player_1, Converter=ToString}"/>
+    </Container>
+    <Container>
+        <ItemTemplate source="{Component Health, Path=value, Filters=Player}">
+            <Container id="Gachimuchi">
+                <Node width="100px" height="{Item height}"/>
+                <ImageNode icon="{Asset Path=assets/dog.png}" color="{Item Path=color}"/>
+                <Container>
+                    <AseSlice file="{Asset Path=assets/dog.png}" path="{Item slice}"/>
+                </Container>
+                <Container>
+                    <Counter value="{Item count}"/>
+                    <Container>
+                        <Node width="{Item width}" height="{Item height}"/>
+                    </Container>
+                </Container>
+            </Container>
+        </ItemTemplate>
+    </Container>
+</Layout>

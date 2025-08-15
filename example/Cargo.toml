@@ -1,0 +1,10 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2024"
+
+[build-dependencies]
+ui_generator = { path = "../ui_generator" }
+
+[dependencies]
+bevy = "0.16.1"

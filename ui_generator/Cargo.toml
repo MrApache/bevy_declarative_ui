@@ -1,0 +1,15 @@
+[package]
+name = "ui_generator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy_declarative_ui_parser = { path = "../bevy_declarative_ui_parser", features = ["node_span"] }
+tempfile = "3.20.0"
+itertools = "0.14.0"
+
+syn = { version = "2.0", features = ["full", "extra-traits", "visit"] }
+quote = "1.0"
+walkdir = "2.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

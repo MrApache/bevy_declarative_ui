@@ -1,0 +1,3 @@
+[workspace]
+members = ["bevy_declarative_ui", "ui_generator", "bevy_declarative_ui_parser", "dynamic_ui", "example"]
+resolver = "2"

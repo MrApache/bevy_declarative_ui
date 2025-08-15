@@ -1,0 +1,25 @@
+use std::collections::HashMap;
+use bevy_declarative_ui_parser::values::{Binding, Filters};
+
+#[derive(Default)]
+pub struct Required {
+    pub ids: Vec<String>,
+    
+    ///Resource name, argument name
+    pub resources: HashMap<String, String>,
+
+    ///Component name, argument name, filters
+    pub components: HashMap<String, (String, Filters)>,
+
+    ///Id, bindings
+    pub bindings: HashMap<String, Vec<RequiredBinding>>,
+
+    ///Indicates that function requires asset server
+    pub asset_server: bool,
+}
+
+pub struct RequiredBinding {
+    pub inner:      Binding,
+    pub component:  String,
+    pub field_name: String,
+}
