@@ -1,5 +1,5 @@
-use crate::position::{Location, Span};
 use crate::lexer::Attribute;
+use crate::position::{Location, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Tag {

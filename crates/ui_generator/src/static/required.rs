@@ -1,11 +1,11 @@
-use std::collections::HashMap;
 use bevy_declarative_ui_parser::values::bindings::BindingKind;
 use bevy_declarative_ui_parser::values::bindings::filter::Filters;
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Required {
     pub ids: Vec<String>,
-    
+
     ///Resource name, argument name
     pub resources: HashMap<String, String>,
 
@@ -20,7 +20,7 @@ pub struct Required {
 }
 
 pub struct RequiredBinding {
-    pub inner:      BindingKind,
-    pub component:  String,
+    pub inner: BindingKind,
+    pub component: String,
     pub field_name: String,
 }

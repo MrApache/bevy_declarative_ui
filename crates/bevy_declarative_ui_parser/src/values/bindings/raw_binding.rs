@@ -1,12 +1,12 @@
-use std::fmt::Debug;
-use std::marker::PhantomData;
-use std::collections::HashMap;
-use crate::errors::XmlLayoutError;
 use crate::LayoutReader;
+use crate::errors::XmlLayoutError;
 use crate::lexer::Value;
 use crate::utils::GetOrInsertEmpty;
 use crate::values::bindings::NamedParameter;
 use crate::values::bindings::params::Params;
+use std::collections::HashMap;
+use std::fmt::Debug;
+use std::marker::PhantomData;
 
 pub struct RawBinding<B>
 where
@@ -27,16 +27,19 @@ where
         source: Value,
         target: Value,
         unnamed: Option<Value>,
-        mut named: HashMap<String, Vec<NamedParameter>>
+        mut named: HashMap<String, Vec<NamedParameter>>,
     ) -> Result<Self, XmlLayoutError> {
-
         let mut result = Vec::new();
-        if let Some(unnamed) = unnamed && let Some(shortcut) = B::unnamed_param() {
+        if let Some(unnamed) = unnamed
+            && let Some(shortcut) = B::unnamed_param()
+        {
             let mut span = unnamed.span;
             span.end = span.start + unnamed.inner.len();
             let location = unnamed.location;
             let fake_name = Value::new(span, location, shortcut);
-            named.get_or_insert(shortcut, ||vec![]).push(NamedParameter::new(fake_name, unnamed, span, location));
+            named
+                .get_or_insert(shortcut, || vec![])
+                .push(NamedParameter::new(fake_name, unnamed, span, location));
         }
 
         for (key_name, values) in named {
@@ -56,13 +59,15 @@ where
     }
 
     pub fn contains_key(&self, key: &str) -> bool {
-        self.params.iter()
+        self.params
+            .iter()
             .find(|p| p.name.value().eq(key))
             .is_some()
     }
 
     pub fn get_duplicates(&self, key: &str) -> Vec<Value> {
-        self.params.iter()
+        self.params
+            .iter()
             .filter(|p| p.name.value().eq(key))
             .map(|p| p.value.clone())
             .collect()

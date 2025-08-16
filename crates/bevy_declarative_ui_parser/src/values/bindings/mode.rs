@@ -10,10 +10,10 @@ pub enum BindingMode {
 impl BindingMode {
     pub fn from_str(value: &str) -> Self {
         match value {
-            "Read"      => Self::Read,
-            "Write"     => Self::Write,
+            "Read" => Self::Read,
+            "Write" => Self::Write,
             "ReadWrite" => Self::ReadWrite,
-            "ReadOnce"  => Self::ReadOnce,
+            "ReadOnce" => Self::ReadOnce,
             _ => panic!(),
         }
     }

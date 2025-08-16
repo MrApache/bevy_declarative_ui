@@ -1,11 +1,10 @@
-use std::fmt::{Display, Formatter};
 use crate::codegen::Access;
-
+use std::fmt::{Display, Formatter};
 
 pub struct Struct {
-    name:    String,
-    access:  Access,
-    fields:  Vec<Field>,
+    name: String,
+    access: Access,
+    fields: Vec<Field>,
     derives: Vec<String>,
     //TODO: impls, fields ownership
 }
@@ -14,7 +13,7 @@ impl Struct {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             access: Access::None,
-            name:   name.into(),
+            name: name.into(),
             fields: vec![],
             derives: vec![],
         }
@@ -25,7 +24,12 @@ impl Struct {
         self
     }
 
-    pub fn field(&mut self, access: Access, field_name: impl Into<String>, value_type: impl Into<String>) -> &mut Self {
+    pub fn field(
+        &mut self,
+        access: Access,
+        field_name: impl Into<String>,
+        value_type: impl Into<String>,
+    ) -> &mut Self {
         self.fields.push(Field {
             access,
             name: field_name.into(),
@@ -59,10 +63,14 @@ impl Display for Struct {
         };
 
         if self.fields.is_empty() {
-            write!(f, "{derives}{access} struct {name};\n")
-        }
-        else {
-            let fields = self.fields.iter().map(Field::to_string).collect::<Vec<_>>().join(",\n");
+            writeln!(f, "{derives}{access} struct {name};")
+        } else {
+            let fields = self
+                .fields
+                .iter()
+                .map(Field::to_string)
+                .collect::<Vec<_>>()
+                .join(",\n");
             write!(f, "{derives}{access} struct {name} {{\n{fields}\n}}\n")
         }
     }
@@ -70,8 +78,8 @@ impl Display for Struct {
 
 pub struct Field {
     access: Access,
-    name:   String,
-    value_type: String
+    name: String,
+    value_type: String,
 }
 
 impl Display for Field {

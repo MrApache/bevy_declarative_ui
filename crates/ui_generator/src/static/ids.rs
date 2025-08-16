@@ -1,6 +1,6 @@
 use crate::codegen::{Access, Module, Struct};
 
-pub(super) fn generate_ids(ids: &Vec<String>) -> Module {
+pub(super) fn generate_ids(ids: &[String]) -> Module {
     let mut module = Module::new("ids");
     module.with_using("bevy::prelude::*");
     module.access(Access::Public);

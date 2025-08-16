@@ -14,8 +14,7 @@ impl Item {
 
         let path = if path.starts_with("Path") {
             path.split_once('=').unwrap().1
-        }
-        else {
+        } else {
             path
         };
 

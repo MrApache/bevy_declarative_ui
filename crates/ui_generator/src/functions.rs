@@ -1,56 +1,56 @@
-use core::panic;
-use std::{collections::HashMap, str::FromStr};
 use bevy_declarative_ui_parser::UiNode;
 use bevy_declarative_ui_parser::values::AttributeValue;
+use core::panic;
+use std::{collections::HashMap, str::FromStr};
 
 #[derive(Default)]
 pub(super) struct Functions {
     pub output: String,
-    pub names:  Vec<String>
+    pub names: Vec<String>,
 }
 
 fn detect_type(value: &str) -> String {
     if let Some((enum_type, _variant)) = value.split_once("::") {
-        return format!("{}", enum_type);
+        return enum_type.to_string();
     }
 
-    if let Ok(_) = i8::from_str(value) {
+    if i8::from_str(value).is_ok() {
         return "i8".to_string();
     }
 
-    if let Ok(_) = i16::from_str(value) {
+    if i16::from_str(value).is_ok() {
         return "i16".to_string();
     }
 
-    if let Ok(_) = i32::from_str(value) {
+    if i32::from_str(value).is_ok() {
         return "i32".to_string();
     }
 
-    if let Ok(_) = i64::from_str(value) {
+    if i64::from_str(value).is_ok() {
         return "i64".to_string();
     }
 
-    if let Ok(_) = u8::from_str(value) {
+    if u8::from_str(value).is_ok() {
         return "u8".to_string();
     }
 
-    if let Ok(_) = u16::from_str(value) {
+    if u16::from_str(value).is_ok() {
         return "u16".to_string();
     }
 
-    if let Ok(_) = u32::from_str(value) {
+    if u32::from_str(value).is_ok() {
         return "u32".to_string();
     }
 
-    if let Ok(_) = u64::from_str(value) {
+    if u64::from_str(value).is_ok() {
         return "u64".to_string();
     }
 
-    if let Ok(_) = value.parse::<f32>() {
+    if value.parse::<f32>().is_ok() {
         return "f32".to_string();
     }
 
-    if let Ok(_) = value.parse::<f64>() {
+    if value.parse::<f64>().is_ok() {
         return "f64".to_string();
     }
 
@@ -69,10 +69,11 @@ fn detect_type(value: &str) -> String {
     panic!("Unknown type: {value}");
 }
 
-
 fn generate_pattern_matching(args: Vec<String>) -> String {
     let mut output: String = String::default();
-    output.push_str("let args = match args.get(context.owner_entity()).unwrap().arguments(context.caller()) {");
+    output.push_str(
+        "let args = match args.get(context.owner_entity()).unwrap().arguments(context.caller()) {",
+    );
 
     args.into_iter().for_each(|arg| {
         let key: String = arg.replacen("context, ", "", 1);
@@ -84,7 +85,7 @@ fn generate_pattern_matching(args: Vec<String>) -> String {
     output
 }
 
-fn generate_function(name: &str, args: &Vec<String>) -> Function {
+fn generate_function(name: &str, args: &[String]) -> Function {
     let mut types: String = String::new();
     let mut values: String = String::new();
     values.push_str("context");
@@ -95,7 +96,8 @@ fn generate_function(name: &str, args: &Vec<String>) -> Function {
         values.push_str(&format!(", {arg}"));
     });
 
-    let output: String = format!(r#"
+    let output: String = format!(
+        r#"
     pub(super) fn {name}(
         In(context):  In<CallbackContext>,
         functions:    Res<UiFunctions>,
@@ -111,7 +113,8 @@ fn generate_function(name: &str, args: &Vec<String>) -> Function {
             return;
         }}
     }}
-    "#);
+    "#
+    );
 
     Function {
         name: name.to_string(),
@@ -126,7 +129,7 @@ struct Function {
     args: Vec<String>,
 }
 
-fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
+fn generate_functions(nodes: &[UiNode]) -> Functions {
     let mut prepared_functions: Functions = Functions::default();
 
     let mut functions = HashMap::<String, Function>::new();
@@ -136,8 +139,9 @@ fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
         prepared_functions.output.push_str(&functions_tmp.output);
 
         node.tag.attributes.iter().for_each(|attribute| {
+            //TODO fix
             let func: Function = match &attribute.value {
-                AttributeValue::Function(value) => generate_function(&value.name, &value.args),
+                //AttributeValue::Function(value) => generate_function(&value.name, &value.args),
                 //NodeValue::CallPropertyFunction { name, args } => generate_bindable_function(name, args),
                 _ => return,
             };
@@ -145,7 +149,11 @@ fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
             if !functions.contains_key(&func.name) {
                 functions.insert(func.name.clone(), func);
             } else {
-                functions.get_mut(&func.name).unwrap().args.extend(func.args);
+                functions
+                    .get_mut(&func.name)
+                    .unwrap()
+                    .args
+                    .extend(func.args);
             }
         });
     });
@@ -160,7 +168,11 @@ fn generate_functions(nodes: &Vec<UiNode>) -> Functions {
     prepared_functions
 }
 
-pub(super) fn generate_function_registrations(nodes: &Vec<UiNode>, output: &mut String, module_name: &str) -> String {
+pub(super) fn generate_function_registrations(
+    nodes: &[UiNode],
+    output: &mut String,
+    module_name: &str,
+) -> String {
     let mut function_registrations: String = String::new();
     let functions = generate_functions(nodes);
     output.push_str(&functions.output);
@@ -168,9 +180,11 @@ pub(super) fn generate_function_registrations(nodes: &Vec<UiNode>, output: &mut 
         let function_path = if module_name.is_empty() {
             function.clone()
         } else {
-            format!("{}::{}", module_name, function)
+            format!("{module_name}::{function}")
         };
-        function_registrations.push_str(&format!("functions.register(\"{function}\", {function_path});"));
+        function_registrations.push_str(&format!(
+            "functions.register(\"{function}\", {function_path});"
+        ));
     }
 
     function_registrations

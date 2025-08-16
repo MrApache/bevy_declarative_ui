@@ -664,3 +664,7 @@ fn push(
         }
     }
 }
+
+fn use() {
+    bevy::app::App
+}

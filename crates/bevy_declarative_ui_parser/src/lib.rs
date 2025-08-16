@@ -1,29 +1,29 @@
-pub mod into;
 pub mod attribute;
-pub mod values;
-pub mod utils;
-pub mod position;
 pub mod errors;
-mod template;
-mod layout_reader;
+pub mod into;
 mod layout_errors_impls;
-mod states;
+mod layout_reader;
 mod lexer;
+pub mod position;
+mod states;
+mod template;
+pub mod utils;
+pub mod values;
 
 pub use layout_reader::LayoutReader;
 pub use template::ItemTemplate;
 
-use std::collections::HashSet;
 pub use crate::errors::XmlLayoutError;
 use crate::into::Tag;
+use std::collections::HashSet;
 
 type XmlTag = lexer::Tag;
 
 #[derive(Default, Debug)]
 pub struct XmlLayout {
-    pub templates:  Vec<ItemTemplate>,
+    pub templates: Vec<ItemTemplate>,
     pub root_nodes: Vec<UiNode>,
-    pub usings:     HashSet<String>,
+    pub usings: HashSet<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -38,8 +38,7 @@ impl Id {
     pub fn to_runtime(self) -> Self {
         if let Self::Runtime(_) = self {
             unreachable!()
-        }
-        else {
+        } else {
             Self::Runtime(format!("Runtime{self}"))
         }
     }
@@ -59,18 +58,18 @@ impl std::fmt::Display for Id {
 #[derive(Clone, Debug)]
 pub struct UiNode {
     pub tag: Tag,
-    pub id:  Id,
+    pub id: Id,
     pub components: Vec<Tag>,
-    pub children:   Vec<UiNode>,
+    pub children: Vec<UiNode>,
 }
 
 impl UiNode {
     pub fn new(reader: &LayoutReader, tag: XmlTag) -> Result<UiNode, XmlLayoutError> {
         Ok(UiNode {
-            tag:  Tag::from(reader, tag)?,
-            id:   Id::Default(0),
+            tag: Tag::from(reader, tag)?,
+            id: Id::Default(0),
             components: vec![],
-            children:   vec![],
+            children: vec![],
         })
     }
 }

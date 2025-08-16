@@ -1,19 +1,16 @@
-use std::sync::atomic::{AtomicU64, Ordering};
 use crate::lexer::Token;
 use crate::{
-    Id,
-    LayoutReader,
-    XmlLayout,
-    XmlLayoutError,
-    states::{
-        FSMContext,
-        State
-    },
+    Id, LayoutReader, XmlLayout, XmlLayoutError,
+    states::{FSMContext, State},
 };
+use std::sync::atomic::{AtomicU64, Ordering};
 
 static TEMPLATE_ID: AtomicU64 = AtomicU64::new(0);
 
-pub(super) fn template_execute(context: &mut FSMContext, reader: &mut LayoutReader) -> Result<State, XmlLayoutError> {
+pub(super) fn template_execute(
+    context: &mut FSMContext,
+    reader: &mut LayoutReader,
+) -> Result<State, XmlLayoutError> {
     let template = context.layout.templates.last_mut().unwrap();
     let (template_layout, id) = parse_template_layout(reader)?;
 
@@ -40,6 +37,9 @@ fn parse_template_layout(reader: &mut LayoutReader) -> Result<(XmlLayout, Id), X
     let id = Id::Template(TEMPLATE_ID.fetch_add(1, Ordering::SeqCst));
     let first = template_context.container_tmp.get_mut(0).unwrap();
     first.inner.id = id.clone();
-    template_context.layout.root_nodes.extend(template_context.container_tmp.into_iter().map(|c| c.inner));
+    template_context
+        .layout
+        .root_nodes
+        .extend(template_context.container_tmp.into_iter().map(|c| c.inner));
     Ok((template_context.layout, id))
 }

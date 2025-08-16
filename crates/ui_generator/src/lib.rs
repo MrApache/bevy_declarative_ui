@@ -1,18 +1,18 @@
+use bevy_declarative_ui_parser::{LayoutReader, UiNode, XmlLayout, values::AttributeValue};
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use bevy_declarative_ui_parser::{values::AttributeValue, LayoutReader, UiNode, XmlLayout};
 
-use crate::functions::{generate_function_registrations};
-use crate::utils::join_usings;
+use crate::functions::generate_function_registrations;
 use crate::module::Module;
+use crate::utils::join_usings;
 
+mod codegen;
 mod functions;
-mod utils;
 mod module;
 mod r#static;
-mod codegen;
+mod utils;
 
 fn collect_xml_files(dir: &Path, files: &mut Vec<PathBuf>) {
     if dir.is_dir() {
@@ -70,10 +70,12 @@ fn generate_module(layout: XmlLayout, module: &Module, module_dir: &PathBuf) {
     output.push_str("use bevy::prelude::{Mut, App, Plugin};");
     output.push_str(&join_usings(&layout.usings));
 
-    let mut function_registrations = generate_function_registrations(&layout.root_nodes, &mut output, &String::new());
+    let mut function_registrations =
+        generate_function_registrations(&layout.root_nodes, &mut output, &String::new());
     let binding_registrations = generate_binding_registration(&layout.root_nodes);
 
-    output.push_str(&format!(r#"
+    output.push_str(&format!(
+        r#"
     pub struct XmlGeneratedPlugin;
     impl Plugin for XmlGeneratedPlugin {{
         fn build(&self, app: &mut App) {{
@@ -89,7 +91,8 @@ fn generate_module(layout: XmlLayout, module: &Module, module_dir: &PathBuf) {
             state.apply(world);
         }}
     }}
-    "#));
+    "#
+    ));
 
     let generated_file = module_dir.join("mod.rs");
     let mut file = File::create(&generated_file).unwrap();
@@ -101,12 +104,13 @@ fn generate_binding_registration(nodes: &Vec<UiNode>) -> String {
     let mut output: String = String::new();
     nodes.iter().for_each(|node| {
         node.tag.attributes.iter().for_each(|attribute| {
-            match &attribute.value {
-                AttributeValue::Binding(value) => {
-                    //output.push_str(&format!("functions.register(\"{value}\", {value});")); TODO fix
-                }
-                _ => {},
-            }
+            //TODO fix
+            //match &attribute.value {
+            //    AttributeValue::Binding(value) => {
+            //        //output.push_str(&format!("functions.register(\"{value}\", {value});")); TODO fix
+            //    }
+            //    _ => {},
+            //}
         });
         output.push_str(&generate_binding_registration(&node.children));
     });

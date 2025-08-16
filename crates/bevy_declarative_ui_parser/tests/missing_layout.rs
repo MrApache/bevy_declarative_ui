@@ -8,7 +8,10 @@ fn test() {
     </GlobalResources>
 "#;
     let layout = LayoutReader::new(MISSING_LAYOUT_XML, "").parse();
-    assert_eq!(layout.unwrap_err(), XmlLayoutError::MissingLayout {
-        file: String::new(),
-    });
+    assert_eq!(
+        layout.unwrap_err(),
+        XmlLayoutError::MissingLayout {
+            file: String::new(),
+        }
+    );
 }

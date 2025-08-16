@@ -1,22 +1,22 @@
-mod error_impls;
 mod attribute;
-mod value;
+mod error_impls;
 mod tag;
-mod utils;
-mod token;
 mod tag_end;
+mod token;
+mod utils;
+mod value;
 
-use std::io::Read;
 use crate::position::*;
+use std::io::Read;
 
+pub use attribute::Attribute;
 pub use tag::Tag;
+pub use tag_end::TagEnd;
 pub use token::Token;
 pub use value::Value;
-pub use attribute::Attribute;
-pub use tag_end::TagEnd;
 
-use crate::errors::XmlLayoutError;
 use crate::LayoutReader;
+use crate::errors::XmlLayoutError;
 use crate::lexer::utils::{is_name_char, is_name_start_char, is_valid_xml_text_char};
 
 impl<'a> LayoutReader<'a> {
@@ -91,7 +91,7 @@ impl<'a> LayoutReader<'a> {
         loop {
             match self.inner.read(&mut buffer) {
                 Ok(0) => return Err(self.err_unexpected_eof()),
-                _ => {},
+                _ => {}
             }
             if buffer[0] == b' ' || buffer[0] == b'\t' || buffer[0] == b'\r' || buffer[0] == b'\n' {
                 continue;
@@ -105,7 +105,6 @@ impl<'a> LayoutReader<'a> {
     }
 
     fn read_tag_span(&mut self) -> Result<bool, XmlLayoutError> {
-
         let mut is_open = true;
         self.consume_byte(true)?; // Skip '<' with whitespaces
 
@@ -143,7 +142,7 @@ impl<'a> LayoutReader<'a> {
                         return Err(self.err_unexpected_char('>', '/'));
                     }
                     slash = true;
-                },
+                }
                 _ => {}
             }
         }
@@ -183,15 +182,13 @@ impl<'a> LayoutReader<'a> {
         let position = self.cursor_position();
         if self.peek_byte_no_ws()? == b'<' {
             self.consume_byte(true)?;
-        }
-        else {
+        } else {
             return Ok(false);
         }
 
         if self.peek_byte()? == b'!' {
             self.consume_byte(false)?;
-        }
-        else {
+        } else {
             self.inner.set_position(position);
             self.location = location;
             return Ok(false);
@@ -200,8 +197,7 @@ impl<'a> LayoutReader<'a> {
         for _ in 0..2 {
             if self.peek_byte()? == b'-' {
                 self.consume_byte(false)?;
-            }
-            else {
+            } else {
                 self.inner.set_position(position);
                 self.location = location;
                 return Ok(false);
@@ -226,8 +222,7 @@ impl<'a> LayoutReader<'a> {
             if first {
                 buffer[0] = byte;
                 first = false;
-            }
-            else {
+            } else {
                 buffer[1] = byte;
                 first = true;
             }
@@ -241,21 +236,17 @@ impl<'a> LayoutReader<'a> {
             Ok(b'<') => {
                 if self.peek_comment()? {
                     self.read_comment()
-                }
-                else {
+                } else {
                     if self.read_tag_span()? {
                         self.read_tag()
-                    }
-                    else {
+                    } else {
                         self.read_tag_end()
                     }
                 }
-            },
-            Err(e) => {
-                match e {
-                    XmlLayoutError::EndOfFile { .. } => Ok(Token::EOF),
-                    _ => Err(e),
-                }
+            }
+            Err(e) => match e {
+                XmlLayoutError::EndOfFile { .. } => Ok(Token::EOF),
+                _ => Err(e),
             },
             Ok(other) => {
                 let byte = self.peek_byte_no_ws().unwrap();
@@ -271,7 +262,7 @@ impl<'a> LayoutReader<'a> {
                         }
                     }
                 }
-            },
+            }
         }
     }
 
@@ -280,11 +271,11 @@ impl<'a> LayoutReader<'a> {
     }
 
     pub fn substring(&self) -> String {
-        self.inner.get_ref()[self.current_span.start ..self.current_span.end].to_string()
+        self.inner.get_ref()[self.current_span.start..self.current_span.end].to_string()
     }
 
     pub fn substring_other(&self, span: &Span) -> String {
-        self.inner.get_ref()[span.start .. span.end].to_string()
+        self.inner.get_ref()[span.start..span.end].to_string()
     }
 
     fn read_tag_end(&mut self) -> Result<Token, XmlLayoutError> {
@@ -321,16 +312,14 @@ impl<'a> LayoutReader<'a> {
             } else {
                 Err(self.err_unexpected_char_with_loc(location, '>', byte as char))
             }
-        }
-        else if byte == b'>' {
+        } else if byte == b'>' {
             Ok(Token::TagStart(Tag {
                 span: self.current_span,
                 location,
                 identifier: self.substring_other(&identifier),
                 attributes,
             }))
-        }
-        else {
+        } else {
             Err(self.err_unexpected_char_with_loc(location, '>', byte as char))
         }
     }
@@ -347,10 +336,7 @@ impl<'a> LayoutReader<'a> {
                 b'.' => end += 1,
                 b if b.is_ascii_alphabetic() => end += 1,
                 b if b.is_ascii_digit() => end += 1,
-                b if b.is_ascii_whitespace() => return Ok(Span {
-                    start,
-                    end,
-                }),
+                b if b.is_ascii_whitespace() => return Ok(Span { start, end }),
                 b'>' => {
                     self.inner.set_position(end as u64);
                     return Ok(Span { start, end });
@@ -375,10 +361,10 @@ impl<'a> LayoutReader<'a> {
             self.consume_equal_char()?;
             let attribute_value = self.read_attribute_value()?;
             attributes.push(Attribute {
-                span:     self.current_span,
+                span: self.current_span,
                 location: attribute_location,
-                name:     attribute_name,
-                value:    attribute_value,
+                name: attribute_name,
+                value: attribute_value,
             })
         }
         Ok(attributes)
@@ -420,9 +406,14 @@ impl<'a> LayoutReader<'a> {
 
     fn error_span(&self, length: usize) -> ErrorSpan {
         let inner = self.substring();
-        let start = self.location.column - (self.current_span.start - self.start_of_line.min(self.current_span.start));
+        let start = self.location.column
+            - (self.current_span.start - self.start_of_line.min(self.current_span.start));
         let source = inner.trim().to_string();
-        ErrorSpan { source, start, length }
+        ErrorSpan {
+            source,
+            start,
+            length,
+        }
     }
 
     fn read_attribute_value(&mut self) -> Result<Value, XmlLayoutError> {

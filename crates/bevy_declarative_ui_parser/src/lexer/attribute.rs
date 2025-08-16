@@ -1,12 +1,12 @@
-use crate::position::{Location, Span};
 use crate::lexer::value::Value;
+use crate::position::{Location, Span};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Attribute {
-    pub(crate) span:     Span,
+    pub(crate) span: Span,
     pub(crate) location: Location,
-    pub(crate) name:     Value,
-    pub(crate) value:    Value,
+    pub(crate) name: Value,
+    pub(crate) value: Value,
 }
 
 impl Attribute {

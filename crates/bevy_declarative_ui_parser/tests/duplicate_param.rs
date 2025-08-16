@@ -1,7 +1,7 @@
 mod utils;
 
-use bevy_declarative_ui_parser::errors::{Duplicates, XmlLayoutError};
 use bevy_declarative_ui_parser::LayoutReader;
+use bevy_declarative_ui_parser::errors::{Duplicates, XmlLayoutError};
 use bevy_declarative_ui_parser::position::{Location, SimpleErrorSpan};
 use utils::*;
 

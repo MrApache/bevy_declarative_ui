@@ -14,8 +14,7 @@ impl Asset {
 
         let path = if path.starts_with("Path") {
             path.split_once('=').unwrap().1
-        }
-        else {
+        } else {
             path
         };
 
@@ -23,11 +22,11 @@ impl Asset {
         if !path.is_empty() {
             params.insert("Path", path);
         }
-        
+
         if params.is_empty() {
             panic!("Missing parameters: Path");
         }
-        
+
         println!();
         Asset {
             path: params.get("Path").unwrap().to_string(),

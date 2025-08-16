@@ -1,27 +1,36 @@
-use std::collections::HashMap;
-use itertools::Itertools;
-use bevy_declarative_ui_parser::{ItemTemplate, UiNode};
-use bevy_declarative_ui_parser::utils::GetOrInsertEmpty;
-use bevy_declarative_ui_parser::values::{AttributeValue, TemplateBinding};
-use bevy_declarative_ui_parser::values::bindings::filter::{Filter, Filters};
 use crate::codegen::{Argument, Function, Module, Ownership};
 use crate::r#static::required::Required;
-use crate::utils::{ToSnakeCase};
+use crate::utils::ToSnakeCase;
+use bevy_declarative_ui_parser::utils::GetOrInsertEmpty;
+use bevy_declarative_ui_parser::values::bindings::filter::{Filter, Filters};
+use bevy_declarative_ui_parser::values::{AttributeValue, TemplateBinding};
+use bevy_declarative_ui_parser::{ItemTemplate, UiNode};
+use itertools::Itertools;
+use std::collections::HashMap;
 
 fn get_access_to_target(function: &mut Function, binding: &TemplateBinding) {
-    match binding{
+    match binding {
         TemplateBinding::Resource(binding) => {
             function.resource_arg(&binding.base_params.target, "target");
-            function.push_line_to_body(format!("let target = target.{};", binding.base_params.path));
+            function
+                .push_line_to_body(format!("let target = target.{};", binding.base_params.path));
         }
         TemplateBinding::Component(binding) => {
-            function.single_ref_arg("target", &binding.base_params.target, &binding.additional_params.filters);
-            function.push_line_to_body(format!("let target = target.{};", binding.base_params.path));
+            function.single_ref_arg(
+                "target",
+                &binding.base_params.target,
+                &binding.additional_params.filters,
+            );
+            function
+                .push_line_to_body(format!("let target = target.{};", binding.base_params.path));
         }
     }
 }
 
-pub fn print_template_functions(templates: &[ItemTemplate], global_required: &mut Required) -> Module {
+pub fn print_template_functions(
+    templates: &[ItemTemplate],
+    global_required: &mut Required,
+) -> Module {
     let mut required = Required::default();
 
     let mut module = Module::new("templates");
@@ -30,14 +39,22 @@ pub fn print_template_functions(templates: &[ItemTemplate], global_required: &mu
         required.ids.push(template.id.to_string());
         template_workload(template, &mut module);
 
-        let mut function = Function::new(format!("spawn_{}", template.id.to_string().to_snake_case()));
+        let mut function =
+            Function::new(format!("spawn_{}", template.id.to_string().to_snake_case()));
         get_access_to_target(&mut function, &template.source);
         function.commands_arg();
-        function.single_arg("container", "Entity", &Filters::single(Filter::With(template.owner.to_string())));
+        function.single_arg(
+            "container",
+            "Entity",
+            &Filters::single(Filter::With(template.owner.to_string())),
+        );
         function.push_line_to_body("let mut container = commands.entity(container);");
         function.push_line_to_body("container.with_children(|p| {");
 
-        template.nodes.iter().for_each(|node| print_node(&mut function, &mut required, node));
+        template
+            .nodes
+            .iter()
+            .for_each(|node| print_node(&mut function, &mut required, node));
 
         function.push_line_to_body("});");
         if required.asset_server {
@@ -51,14 +68,15 @@ pub fn print_template_functions(templates: &[ItemTemplate], global_required: &mu
     global_required.ids.extend(required.ids);
 
     module
-
 }
 
 fn print_node(function: &mut Function, required: &mut Required, node: &UiNode) {
-    let mut fields: Vec<String> = node.components.iter()
+    let mut fields: Vec<String> = node
+        .components
+        .iter()
         .map(|c| crate::r#static::spawn_function::format_component(required, &node.id, c))
         .collect();
-    let runtime_id = format!("Runtime{}", node.id.to_string());
+    let runtime_id = format!("Runtime{}", node.id);
     fields.push(runtime_id.clone());
     required.ids.push(runtime_id);
 
@@ -66,10 +84,9 @@ fn print_node(function: &mut Function, required: &mut Required, node: &UiNode) {
         function.push_line_to_body("p.spawn((");
         function.push_to_body(fields.join(", "));
         function.push_to_body("))");
-    }
-    else {
+    } else {
         function.push_line_to_body("p.spawn(");
-        function.push_line_to_body(fields.get(0).unwrap());
+        function.push_line_to_body(fields.first().unwrap());
         function.push_to_body(")");
     }
 
@@ -77,7 +94,9 @@ fn print_node(function: &mut Function, required: &mut Required, node: &UiNode) {
         function.push_to_body(';');
     } else {
         function.push_line_to_body(".with_children(|p| {");
-        node.children.iter().for_each(|container| print_node(function, required, container));
+        node.children
+            .iter()
+            .for_each(|container| print_node(function, required, container));
         function.push_line_to_body("});");
     }
 }
@@ -91,12 +110,21 @@ fn template_workload(template: &ItemTemplate, module: &mut Module) {
 }
 
 fn template_instance_limiter(template: &ItemTemplate) -> Function {
-    let mut function: Function = Function::new(format!("{}_instance_limiter", template.id.to_string().to_snake_case()));
+    let mut function: Function = Function::new(format!(
+        "{}_instance_limiter",
+        template.id.to_string().to_snake_case()
+    ));
     function.commands_arg();
-    function.arg(Argument::new("instances", format!("Query<Entity, With<{}>>", template.id), false, Ownership::Move));
+    function.arg(Argument::new(
+        "instances",
+        format!("Query<Entity, With<{}>>", template.id),
+        false,
+        Ownership::Move,
+    ));
     function.local_mut_arg("previous", "usize");
 
-    let content = format!(r#"
+    let content = format!(
+        r#"
     let count = instances.iter().len();
     match count.cmp(&*previous) {{
         Ordering::Less => {{
@@ -112,26 +140,37 @@ fn template_instance_limiter(template: &ItemTemplate) -> Function {
         }},
         Ordering::Equal => return,
     }}
-    "#, template.id.to_string().to_snake_case());
+    "#,
+        template.id.to_string().to_snake_case()
+    );
     function.push_line_to_body(content);
 
     function
 }
 
 fn template_binding(template: &ItemTemplate) -> Function {
-    let mut function: Function = Function::new(format!("{}_binding", template.id.to_string().to_snake_case()));
+    let mut function: Function = Function::new(format!(
+        "{}_binding",
+        template.id.to_string().to_snake_case()
+    ));
 
     match &template.source {
         TemplateBinding::Resource(binding) => {
             function.resource_arg(&binding.base_params.target, "target");
             function.push_line_to_body("if !target.is_changed() {{\n return;\n}}");
-            function.push_line_to_body(format!("let target = &target.{};", &binding.base_params.path));
-        },
+            function.push_line_to_body(format!(
+                "let target = &target.{};",
+                &binding.base_params.path
+            ));
+        }
         TemplateBinding::Component(binding) => {
             let mut filters = binding.additional_params.filters.clone();
             let filters = filters.with(Filter::Changed(binding.base_params.target.clone()));
-            function.single_ref_arg("target", &binding.base_params.target, &filters);
-            function.push_line_to_body(format!("let target = &target.{};", &binding.base_params.path));
+            function.single_ref_arg("target", &binding.base_params.target, filters);
+            function.push_line_to_body(format!(
+                "let target = &target.{};",
+                &binding.base_params.path
+            ));
         }
     }
 
@@ -139,7 +178,7 @@ fn template_binding(template: &ItemTemplate) -> Function {
     create_observers(&mut 0, &mut observers, &template.nodes);
     let mut observers = observers.into_iter().collect_vec();
     observers.sort_by(|((_, ident_a), _), ((_, ident_b), _)| ident_a.cmp(ident_b));
-    prepare_arguments(&mut function, &mut observers);
+    prepare_arguments(&mut function, &observers);
 
     if observers.len() > 1 {
         let mut cmp_binds = Vec::new();
@@ -154,29 +193,31 @@ fn template_binding(template: &ItemTemplate) -> Function {
             cmp_binds.push(ident.clone());
             let components_in_bundle = components.len();
 
-            components.into_iter().enumerate().for_each(|(i, (_, observers))| {
-
-                observers.iter().for_each(|observer| {
-                    if components_in_bundle > 1 {
-                        setters.push_str(
-                            &format!("{ident}.{i}.{field} = target.{path};\n",
-                                     field = observer.field,
-                                     path = observer.path
+            components
+                .into_iter()
+                .enumerate()
+                .for_each(|(i, (_, observers))| {
+                    observers.iter().for_each(|observer| {
+                        if components_in_bundle > 1 {
+                            setters.push_str(&format!(
+                                "{ident}.{i}.{field} = target.{path};\n",
+                                field = observer.field,
+                                path = observer.path
                             ));
-                    }
-                    else {
-                        setters.push_str(
-                            &format!("{ident}.{field} = target.{path};\n",
-                                     field = observer.field,
-                                     path = observer.path
+                        } else {
+                            setters.push_str(&format!(
+                                "{ident}.{field} = target.{path};\n",
+                                field = observer.field,
+                                path = observer.path
                             ));
-                    }
+                        }
+                    });
                 });
-            });
         });
 
         let cmp_binds = nested_join(cmp_binds);
-        function.push_line_to_body(format!(r#"
+        function.push_line_to_body(format!(
+            r#"
         cmp0.iter()
             {zip_calls}
             .enumerate()
@@ -184,7 +225,8 @@ fn template_binding(template: &ItemTemplate) -> Function {
                 let target = target.get(i).unwrap();
                 {setters}
             }});
-        "#));
+        "#
+        ));
     }
     function
 }
@@ -199,7 +241,8 @@ fn create_observers<'a>(
         for component in &node.components {
             for attribute in &component.attributes {
                 if let AttributeValue::Item(item) = &attribute.value {
-                    let observers: &mut Vec<Observer> = components.get_or_insert_empty(component.name.clone());
+                    let observers: &mut Vec<Observer> =
+                        components.get_or_insert_empty(component.name.clone());
                     observers.push(Observer {
                         field: &attribute.name,
                         path: &item.base_params.path,
@@ -207,7 +250,10 @@ fn create_observers<'a>(
                 }
             }
         }
-        observers.insert((format!("Runtime{}", node.id.to_string()), format!("cmp{i}")), components);
+        observers.insert(
+            (format!("Runtime{}", node.id), format!("cmp{i}")),
+            components,
+        );
         *i += 1;
         create_observers(i, observers, &node.children);
     }
@@ -215,7 +261,7 @@ fn create_observers<'a>(
 
 struct Observer<'a> {
     field: &'a str,
-    path:  &'a str
+    path: &'a str,
 }
 
 fn nested_join(items: Vec<String>) -> String {
@@ -234,7 +280,7 @@ fn nested_join(items: Vec<String>) -> String {
 
 fn prepare_arguments(
     function: &mut Function,
-    observers: &Vec<((String, String), HashMap<String, Vec<Observer>>)>
+    observers: &Vec<((String, String), HashMap<String, Vec<Observer>>)>,
 ) {
     observers.iter().for_each(|((owner, ident), components)| {
         let bundle = components.keys().collect_vec();

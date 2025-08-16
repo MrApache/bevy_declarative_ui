@@ -1,26 +1,17 @@
-mod layout;
 mod content;
-mod using;
+mod layout;
 mod template;
+mod using;
 
-use std::fmt::{Display, Formatter};
-use std::sync::atomic::{AtomicU64, Ordering};
-use crate::{
-    into::Tag,
-    Id,
-    ItemTemplate,
-    LayoutReader,
-    UiNode,
-    XmlLayout,
-    XmlLayoutError,
-    XmlTag
-};
 use crate::lexer::Token;
 use crate::values::AttributeValue;
+use crate::{Id, ItemTemplate, LayoutReader, UiNode, XmlLayout, XmlLayoutError, XmlTag, into::Tag};
+use std::fmt::{Display, Formatter};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 struct Container {
     depth: usize,
-    inner: UiNode
+    inner: UiNode,
 }
 
 #[derive(Default)]
@@ -28,13 +19,12 @@ pub(super) struct FSMContext {
     depth: usize,
     container_tmp: Vec<Container>,
     pub(crate) layout: XmlLayout,
-    pub(crate) token:  Token,
+    pub(crate) token: Token,
 }
 
 static ID: AtomicU64 = AtomicU64::new(0);
 
 impl FSMContext {
-
     fn create_root_container(&mut self) {
         self.container_tmp.push(Container {
             depth: 1,
@@ -50,24 +40,30 @@ impl FSMContext {
         })
     }
 
-    fn create_container_node(&mut self, reader: &LayoutReader, tag: XmlTag) -> Result<UiNode, XmlLayoutError> {
+    fn create_container_node(
+        &mut self,
+        reader: &LayoutReader,
+        tag: XmlTag,
+    ) -> Result<UiNode, XmlLayoutError> {
         let mut node: UiNode = UiNode::new(reader, tag.clone())?;
         node.id = if let Some(attr) = node.tag.attributes.iter().find(|attr| attr.name == "id") {
             if let AttributeValue::Value(value) = &attr.value {
                 Id::Custom(value.clone())
-            }
-            else  {
+            } else {
                 return Err(reader.err_expected_value(&tag));
             }
-        }
-        else {
+        } else {
             Id::Default(ID.fetch_add(1, Ordering::SeqCst))
         };
 
         Ok(node)
     }
 
-    pub fn create_nested_container(&mut self, reader: &LayoutReader, tag: XmlTag) -> Result<State, XmlLayoutError> {
+    pub fn create_nested_container(
+        &mut self,
+        reader: &LayoutReader,
+        tag: XmlTag,
+    ) -> Result<State, XmlLayoutError> {
         let node = self.create_container_node(reader, tag)?;
         self.container_tmp.push(Container {
             depth: self.depth,
@@ -77,8 +73,17 @@ impl FSMContext {
         Ok(State::Root)
     }
 
-    pub fn create_component_node(&mut self, reader: &LayoutReader, tag: XmlTag) -> Result<State, XmlLayoutError> {
-        self.container_tmp.last_mut().unwrap().inner.components.push(Tag::from(reader, tag.clone())?);
+    pub fn create_component_node(
+        &mut self,
+        reader: &LayoutReader,
+        tag: XmlTag,
+    ) -> Result<State, XmlLayoutError> {
+        self.container_tmp
+            .last_mut()
+            .unwrap()
+            .inner
+            .components
+            .push(Tag::from(reader, tag.clone())?);
         Ok(State::Root)
     }
 
@@ -97,19 +102,32 @@ impl FSMContext {
         }
 
         if self.container_tmp.is_empty() {
-            temp.into_iter().rev().for_each(|node| self.container_tmp.push(Container {
-                depth: 0,
-                inner: node
-            }));
+            temp.into_iter().rev().for_each(|node| {
+                self.container_tmp.push(Container {
+                    depth: 0,
+                    inner: node,
+                })
+            });
             return;
         }
 
-        self.container_tmp.last_mut().unwrap().inner.children.extend(temp);
+        self.container_tmp
+            .last_mut()
+            .unwrap()
+            .inner
+            .children
+            .extend(temp);
     }
 
-    pub fn create_template(&mut self, reader: &LayoutReader, tag: XmlTag) -> Result<State, XmlLayoutError> {
+    pub fn create_template(
+        &mut self,
+        reader: &LayoutReader,
+        tag: XmlTag,
+    ) -> Result<State, XmlLayoutError> {
         let owner = self.container_tmp.last_mut().unwrap().inner.id.clone();
-        self.layout.templates.push(ItemTemplate::new(reader, &tag, owner)?);
+        self.layout
+            .templates
+            .push(ItemTemplate::new(reader, &tag, owner)?);
         Ok(State::ItemTemplate)
     }
 }
@@ -123,7 +141,7 @@ pub(super) enum State {
     ItemTemplate,
 
     Root,
-    Break
+    Break,
 }
 
 impl Display for State {
@@ -140,61 +158,79 @@ impl Display for State {
 }
 
 impl State {
-    pub fn execute(&self, context: &mut FSMContext, reader: &mut LayoutReader) -> Result<State, XmlLayoutError> {
+    pub fn execute(
+        &self,
+        context: &mut FSMContext,
+        reader: &mut LayoutReader,
+    ) -> Result<State, XmlLayoutError> {
         match self {
-            State::Layout          => layout::layout_execute(context, reader),
-            State::Content         => content::content_execute(context, reader),
-            State::Use             => using::use_execute(context),
-            State::ItemTemplate    => template::template_execute(context, reader),
-            State::Root            => root_execute(context, reader),
-            State::Break           => Ok(State::Break),
+            State::Layout => layout::layout_execute(context, reader),
+            State::Content => content::content_execute(context, reader),
+            State::Use => using::use_execute(context),
+            State::ItemTemplate => template::template_execute(context, reader),
+            State::Root => root_execute(context, reader),
+            State::Break => Ok(State::Break),
         }
     }
 }
 
 fn root_execute(context: &mut FSMContext, reader: &LayoutReader) -> Result<State, XmlLayoutError> {
     match &context.token {
-        Token::TagStart(tag) => {
-            match tag.identifier() {
-                "ItemTemplate" => context.create_template(reader, tag.clone()),
-                "Container"    => context.create_nested_container(reader, tag.clone()),
-                _ => Err(reader.err_unexpected_tag(tag.clone(), vec!["ItemTemplate", "Container", "Any component"])),
-            }
-        }
+        Token::TagStart(tag) => match tag.identifier() {
+            "ItemTemplate" => context.create_template(reader, tag.clone()),
+            "Container" => context.create_nested_container(reader, tag.clone()),
+            _ => Err(reader.err_unexpected_tag(
+                tag.clone(),
+                vec!["ItemTemplate", "Container", "Any component"],
+            )),
+        },
         Token::TagEmpty(tag) => {
-            context.container_tmp.last_mut().unwrap().inner.components.push(Tag::from(reader, tag.clone())?);
+            context
+                .container_tmp
+                .last_mut()
+                .unwrap()
+                .inner
+                .components
+                .push(Tag::from(reader, tag.clone())?);
             Ok(State::Root)
         }
-        Token::TagEnd(tag) => {
-            match tag.identifier() {
-                "Container" => {
-                    context.push_nested_containers_in_parent();
-                    Ok(State::Root)
-                },
-                "Layout" => {
-                    let temp = std::mem::take(&mut context.container_tmp);
-                    context.layout.root_nodes.extend(temp.into_iter().map(|c| c.inner));
-                    Ok(State::Break)
-                }
-                other => panic!("Unsupported tag: {}", other),
+        Token::TagEnd(tag) => match tag.identifier() {
+            "Container" => {
+                context.push_nested_containers_in_parent();
+                Ok(State::Root)
             }
-        }
+            "Layout" => {
+                let temp = std::mem::take(&mut context.container_tmp);
+                context
+                    .layout
+                    .root_nodes
+                    .extend(temp.into_iter().map(|c| c.inner));
+                Ok(State::Break)
+            }
+            other => panic!("Unsupported tag: {}", other),
+        },
         Token::EOF => Err(reader.err_end_of_file()),
-        _ => Ok(State::Root)
+        _ => Ok(State::Root),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::states::{FSMContext, State};
     use crate::LayoutReader;
+    use crate::states::{FSMContext, State};
 
     #[test]
     fn test() {
         let mut context = FSMContext::default();
 
-        let xml = std::fs::read_to_string("/home/irisu/bevy_declarative_ui/bevy_declarative_ui/assets/injection_count_10.xml").unwrap();
-        let mut reader = LayoutReader::new(&xml, "/home/irisu/bevy_declarative_ui/bevy_declarative_ui/assets/injection_count_10.xml");
+        let xml = std::fs::read_to_string(
+            "/home/irisu/bevy_declarative_ui/bevy_declarative_ui/assets/injection_count_10.xml",
+        )
+        .unwrap();
+        let mut reader = LayoutReader::new(
+            &xml,
+            "/home/irisu/bevy_declarative_ui/bevy_declarative_ui/assets/injection_count_10.xml",
+        );
 
         let mut state = State::Layout;
         while state != State::Break {
@@ -202,12 +238,10 @@ mod tests {
             let result = state.execute(&mut context, &mut reader);
             if result.is_err() {
                 panic!("{}", result.err().unwrap());
-            }
-            else {
+            } else {
                 state = result.unwrap();
             }
         }
-
 
         println!();
     }

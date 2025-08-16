@@ -1,21 +1,21 @@
+pub mod filter;
+mod kind;
 mod mode;
 pub mod params;
-pub mod filter;
 mod raw_binding;
-mod kind;
 
-pub use mode::BindingMode;
 pub use kind::BindingKind;
+pub use mode::BindingMode;
 
-use std::collections::HashMap;
-use std::fmt::Debug;
-use regex::Regex;
-use raw_binding::RawBinding;
-use crate::{LayoutReader, XmlLayoutError};
-use crate::position::{Location, Span};
 use crate::lexer::Value;
+use crate::position::{Location, Span};
 use crate::utils::{GetOrInsertEmpty, TrimExtension};
 use crate::values::bindings::params::Params;
+use crate::{LayoutReader, XmlLayoutError};
+use raw_binding::RawBinding;
+use regex::Regex;
+use std::collections::HashMap;
+use std::fmt::Debug;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Binding<B, A>
@@ -44,15 +44,20 @@ where
 
 #[derive(Debug)]
 pub struct NamedParameter {
-    pub name:  Value,
+    pub name: Value,
     pub value: Value,
-    pub span:  Span,
+    pub span: Span,
     pub location: Location,
 }
 
 impl NamedParameter {
     pub const fn new(name: Value, value: Value, span: Span, location: Location) -> Self {
-        Self {name, value, span, location }
+        Self {
+            name,
+            value,
+            span,
+            location,
+        }
     }
 }
 
@@ -61,7 +66,12 @@ where
     B: Clone + Debug + PartialEq + Params,
     A: Clone + Debug + PartialEq + Params,
 {
-    pub fn parse(reader: &LayoutReader, source: &Value, target: Value, params: &str) -> Result<Self, XmlLayoutError> {
+    pub fn parse(
+        reader: &LayoutReader,
+        source: &Value,
+        target: Value,
+        params: &str,
+    ) -> Result<Self, XmlLayoutError> {
         let diff = source.value().len() - params.len() - 1;
 
         let mut location = source.location;
@@ -94,34 +104,44 @@ where
                 params_span.end = params_span.start + value_new.len();
                 let value_result = Value::new(params_span, location, value_new);
 
-                let parameter = NamedParameter::new(key_result, value_result, Span::new(0, 0), Location::new(0 ,0, 0));
+                let parameter = NamedParameter::new(
+                    key_result,
+                    value_result,
+                    Span::new(0, 0),
+                    Location::new(0, 0, 0),
+                );
                 named.get_or_insert(key_new, || vec![]).push(parameter);
 
                 let offset = value.len() - value_new.len() + 1; //Skip whitespaces with ','
                 params_span.start = params_span.end + offset;
                 location.column += value_new.len() + offset; // Skip "value[whitespaces],"
-            }
-            else if i == 0 {
+            } else if i == 0 {
                 unnamed = if param.is_empty() {
                     None
                 } else {
                     params_span.end = params_span.start + param.len();
-                    let value = Value::new(params_span, location, reader.substring_other(&params_span));
+                    let value =
+                        Value::new(params_span, location, reader.substring_other(&params_span));
                     params_span.start = params_span.end + 1;
                     location.column += param.len() + 1;
                     Some(value)
                 };
-            }
-            else {
+            } else {
                 panic!("Warning: ignored unexpected unnamed parameter '{param}'");
             }
         });
 
-        create_binding(reader, RawBinding::new(reader, source.clone(), target, unnamed, named)?)
+        create_binding(
+            reader,
+            RawBinding::new(reader, source.clone(), target, unnamed, named)?,
+        )
     }
 }
 
-fn create_binding<B, A>(reader: &LayoutReader, mut raw: RawBinding<B>) -> Result<Binding<B, A>, XmlLayoutError>
+fn create_binding<B, A>(
+    reader: &LayoutReader,
+    mut raw: RawBinding<B>,
+) -> Result<Binding<B, A>, XmlLayoutError>
 where
     B: Clone + Debug + PartialEq + Params,
     A: Clone + Debug + PartialEq + Params,
@@ -130,9 +150,9 @@ where
     let additional_params = A::read(reader, &mut raw)?;
     let binding = match raw.target.value() {
         "Component" => Binding::new(base_params, additional_params, BindingKind::Component),
-        "Resource"  => Binding::new(base_params, additional_params, BindingKind::Resource),
-        "Item"      => Binding::new(base_params, additional_params, BindingKind::Item),
-        _ => panic!("Unknown binding type: {}", raw.target.value())
+        "Resource" => Binding::new(base_params, additional_params, BindingKind::Resource),
+        "Item" => Binding::new(base_params, additional_params, BindingKind::Item),
+        _ => panic!("Unknown binding type: {}", raw.target.value()),
     };
 
     Ok(binding)
@@ -140,7 +160,9 @@ where
 
 fn format_path(input: &str) -> String {
     let array_regex = Regex::new(r"\[([a-zA-Z0-9:_]+)]").unwrap();
-    array_regex.replace_all(input, |caps: &regex::Captures| {
-        format!("get({}).unwrap()", &caps[1])
-    }).to_string()
+    array_regex
+        .replace_all(input, |caps: &regex::Captures| {
+            format!("get({}).unwrap()", &caps[1])
+        })
+        .to_string()
 }

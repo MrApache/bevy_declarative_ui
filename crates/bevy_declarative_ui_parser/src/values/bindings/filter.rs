@@ -20,24 +20,28 @@ pub struct Filters(pub(crate) Vec<Filter>);
 
 impl Filters {
     pub fn to_filter_bundle(&self) -> String {
-        let content = self.0.iter().map(Filter::to_string).collect::<Vec<_>>().join(", ");
+        let content = self
+            .0
+            .iter()
+            .map(Filter::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
         if self.0.len() > 1 {
             format!("({})", content)
-        }
-        else {
+        } else {
             format!("{}", content)
         }
     }
-    
+
     pub fn single(filter: Filter) -> Self {
         Filters(vec![filter])
     }
-    
+
     pub fn with(&mut self, filter: Filter) -> &mut Self {
         self.0.push(filter);
         self
     }
-    
+
     pub const fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -47,20 +51,23 @@ impl From<&str> for Filters {
     fn from(input: &str) -> Self {
         let input = if input.starts_with('{') && input.ends_with('}') {
             &input[1..input.len() - 1]
-        }
-        else {
+        } else {
             input
         };
 
         let filters = input.split(',');
-        Filters(filters.into_iter().map(|filter| {
-            let filter = filter.trim();
-            return if filter.starts_with('!') {
-                Filter::Without(filter[1..].to_string())
-            } else {
-                Filter::With(filter.to_string())
-            }
-        })
-            .collect())
+        Filters(
+            filters
+                .into_iter()
+                .map(|filter| {
+                    let filter = filter.trim();
+                    return if filter.starts_with('!') {
+                        Filter::Without(filter[1..].to_string())
+                    } else {
+                        Filter::With(filter.to_string())
+                    };
+                })
+                .collect(),
+        )
     }
 }

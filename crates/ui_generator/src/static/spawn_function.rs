@@ -1,9 +1,11 @@
-use std::sync::atomic::AtomicU64;
-use bevy_declarative_ui_parser::{Id, UiNode};
-use bevy_declarative_ui_parser::values::AttributeValue;
-use bevy_declarative_ui_parser::into::Tag;
 use crate::codegen::{Access, Function};
 use crate::r#static::required::{Required, RequiredBinding};
+use bevy_declarative_ui_parser::into::Tag;
+use bevy_declarative_ui_parser::utils::GetOrInsertEmpty;
+use bevy_declarative_ui_parser::values::AttributeValue;
+use bevy_declarative_ui_parser::values::bindings::BindingKind;
+use bevy_declarative_ui_parser::{Id, UiNode};
+use std::sync::atomic::AtomicU64;
 
 pub fn print_spawn_function(required: &mut Required, nodes: &[UiNode]) -> Function {
     let mut function = Function::new("spawn_document");
@@ -13,7 +15,9 @@ pub fn print_spawn_function(required: &mut Required, nodes: &[UiNode]) -> Functi
         .push_line_to_body("let mut root = commands.spawn_empty();")
         .push_line_to_body("root.with_children(|p| {");
 
-    nodes.iter().for_each(|node| print_node(&mut function, required, node));
+    nodes
+        .iter()
+        .for_each(|node| print_node(&mut function, required, node));
 
     if required.asset_server {
         function.asset_server_arg();
@@ -24,7 +28,9 @@ pub fn print_spawn_function(required: &mut Required, nodes: &[UiNode]) -> Functi
 }
 
 fn print_node(function: &mut Function, required: &mut Required, node: &UiNode) {
-    let mut fields: Vec<String> = node.components.iter()
+    let mut fields: Vec<String> = node
+        .components
+        .iter()
         .map(|c| format_component(required, &node.id, c))
         .collect();
     fields.push(format!("{}", node.id));
@@ -34,19 +40,19 @@ fn print_node(function: &mut Function, required: &mut Required, node: &UiNode) {
         function.push_line_to_body("p.spawn((");
         function.push_to_body(fields.join(", "));
         function.push_to_body("))");
-    }
-    else {
+    } else {
         function.push_line_to_body("p.spawn(");
         function.push_line_to_body(fields.get(0).unwrap());
         function.push_to_body(")");
     }
 
-
     if node.children.is_empty() {
         function.push_to_body(';');
     } else {
         function.push_line_to_body(".with_children(|p| {");
-        node.children.iter().for_each(|child| print_node(function, required, child));
+        node.children
+            .iter()
+            .for_each(|child| print_node(function, required, child));
         function.push_line_to_body("});");
     }
 }
@@ -62,13 +68,15 @@ pub(crate) fn format_component(required: &mut Required, id: &Id, tag: &Tag) -> S
     let mut fields = String::new();
 
     tag.attributes.iter().for_each(|attr| {
+        /*
         let value: Option<String> = match &attr.value {
             AttributeValue::Value(value) => Some(value.to_string()),
-            AttributeValue::Item(item) => Some(format!("target.{}", item.path)),
             AttributeValue::Asset(asset) => {
                 required.asset_server = true;
                 Some(format!("server.load(\"{}\")", asset.path))
             },
+            //TODO fix
+            AttributeValue::Item(item) => Some(format!("target.{}", item.path)),
             AttributeValue::Binding(binding) => prepare_binding(required, id, &tag.name, &attr.name, binding),
             AttributeValue::Function { .. } => todo!(),
         };
@@ -76,12 +84,12 @@ pub(crate) fn format_component(required: &mut Required, id: &Id, tag: &Tag) -> S
         if let Some(value) = value {
             fields.push_str(&format!("    {}: {},\n", attr.name, value));
         }
+        */
     });
 
     if fields.is_empty() {
         format!("{}::default()", tag.name)
-    }
-    else {
+    } else {
         let mut result = format!("{} {{\n", tag.name);
         result.push_str(&fields);
         result.push_str("    ..default()\n");
@@ -90,7 +98,13 @@ pub(crate) fn format_component(required: &mut Required, id: &Id, tag: &Tag) -> S
     }
 }
 
-fn create_required_binding(required: &mut Required, id: String, binding: Binding, component: String, field_name: String){
+fn create_required_binding(
+    required: &mut Required,
+    id: String,
+    binding: BindingKind,
+    component: String,
+    field_name: String,
+) {
     let bindings = required.bindings.get_or_insert_empty(id);
     bindings.push(RequiredBinding {
         inner: binding,
@@ -99,7 +113,15 @@ fn create_required_binding(required: &mut Required, id: String, binding: Binding
     });
 }
 
-fn prepare_binding(required: &mut Required, id: &Id, component: &String, attribute: &String, binding: &Binding) -> Option<String> {
+fn prepare_binding(
+    required: &mut Required,
+    id: &Id,
+    component: &String,
+    attribute: &String,
+    binding: &BindingKind,
+) -> Option<String> {
+    //TODO
+    /*
     match binding {
         Binding::Resource { params } => {
             if BindingMode::ReadOnce == params.mode {
@@ -125,5 +147,6 @@ fn prepare_binding(required: &mut Required, id: &Id, component: &String, attribu
         }
     }
     create_required_binding(required, id.to_string(), binding.clone(), component.clone(), attribute.clone());
+    */
     None
 }

@@ -1,5 +1,5 @@
-use crate::errors::{ErrorContext, XmlLayoutError};
 use crate::LayoutReader;
+use crate::errors::{ErrorContext, XmlLayoutError};
 use crate::position::Location;
 
 impl<'a> LayoutReader<'a> {
@@ -18,7 +18,12 @@ impl<'a> LayoutReader<'a> {
         }
     }
 
-    pub(super) fn err_unexpected_char_with_loc(&self, location: Location, expected: char, found: char) -> XmlLayoutError {
+    pub(super) fn err_unexpected_char_with_loc(
+        &self,
+        location: Location,
+        expected: char,
+        found: char,
+    ) -> XmlLayoutError {
         XmlLayoutError::UnexpectedChar {
             context: ErrorContext::new(self.file.clone(), location, self.error_span(1)),
             expected,

@@ -1,6 +1,6 @@
-use std::fmt;
 use crate::lexer::Tag;
 use crate::lexer::tag_end::TagEnd;
+use std::fmt;
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub enum Token {

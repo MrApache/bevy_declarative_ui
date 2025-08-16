@@ -11,12 +11,9 @@ pub(super) fn is_valid_xml_text_char(c: char) -> bool {
         '\u{9}'
         | '\u{A}'
         | '\u{D}'
-
         | '\u{20}'..='\u{D7FF}'
         | '\u{E000}'..='\u{FFFD}'
-        | '\u{10000}'..='\u{10FFFF}'
-
-        => true,
+        | '\u{10000}'..='\u{10FFFF}' => true,
         _ => false,
     }
 }

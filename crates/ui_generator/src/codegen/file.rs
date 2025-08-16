@@ -1,19 +1,19 @@
-use std::collections::HashSet;
-use std::io::{Read, Seek, Write};
-use std::process::Command;
-use itertools::Itertools;
-use tempfile::NamedTempFile;
-use crate::codegen::Function;
 use crate::codegen::module::Module;
 use crate::codegen::structs::Struct;
 use crate::codegen::using::Using;
+use crate::codegen::Function;
+use itertools::Itertools;
+use std::collections::HashSet;
+use std::io::{Read, Seek, Write};
+use std::process::Command;
+use tempfile::NamedTempFile;
 
 #[derive(Default)]
 pub struct RustFile {
-    modules:   Vec<Module>,
-    structs:   Vec<Struct>,
+    modules: Vec<Module>,
+    structs: Vec<Struct>,
     functions: Vec<Function>,
-    usings:    HashSet<Using>
+    usings: HashSet<Using>,
 }
 
 impl RustFile {
@@ -26,28 +26,28 @@ impl RustFile {
         let functions = &self.functions.iter().join("\n\n");
 
         if !self.usings.is_empty() {
-            result.push_str(&usings);
+            result.push_str(usings);
             if !self.modules.is_empty() || !self.structs.is_empty() || !self.functions.is_empty() {
                 result.push_str("\n\n");
             }
         }
 
         if !self.modules.is_empty() {
-            result.push_str(&modules);
+            result.push_str(modules);
             if !self.structs.is_empty() || !self.functions.is_empty() {
                 result.push_str("\n\n");
             }
         }
 
         if !self.structs.is_empty() {
-            result.push_str(&structs);
+            result.push_str(structs);
             if !self.functions.is_empty() {
                 result.push_str("\n\n");
             }
         }
 
         if !self.functions.is_empty() {
-            result.push_str(&functions);
+            result.push_str(functions);
         }
 
         if format {

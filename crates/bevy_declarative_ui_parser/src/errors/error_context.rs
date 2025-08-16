@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter};
 use crate::position::{ErrorSpan, Location};
+use std::fmt::{Display, Formatter};
 
 #[derive(PartialEq, Debug)]
 pub struct ErrorContext {
@@ -10,7 +10,11 @@ pub struct ErrorContext {
 
 impl ErrorContext {
     pub const fn new(file: String, location: Location, error: ErrorSpan) -> Self {
-        Self { file, location, error }
+        Self {
+            file,
+            location,
+            error,
+        }
     }
 }
 

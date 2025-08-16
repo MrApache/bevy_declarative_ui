@@ -1,9 +1,9 @@
-use bevy_declarative_ui_parser::{Id, ItemTemplate, UiNode};
-use bevy_declarative_ui_parser::into::Tag;
 use bevy_declarative_ui_parser::attribute::Attribute;
+use bevy_declarative_ui_parser::into::Tag;
 use bevy_declarative_ui_parser::values::{AttributeValue, TemplateBinding};
+use bevy_declarative_ui_parser::{Id, ItemTemplate, UiNode};
 
-pub fn load(file: &str) -> (String, String){
+pub fn load(file: &str) -> (String, String) {
     let work_dir = std::env::current_dir().unwrap().display().to_string();
     let file = format!("{work_dir}/tests/assets/{file}");
     let content = std::fs::read_to_string(&file).unwrap();
@@ -15,13 +15,7 @@ pub trait ContainerAssert {
 }
 
 impl ContainerAssert for UiNode {
-    fn has(
-        &self,
-        attribute_len: usize,
-        component_len: usize,
-        container_len: usize,
-        id: Id
-    ) {
+    fn has(&self, attribute_len: usize, component_len: usize, container_len: usize, id: Id) {
         assert_eq!(self.tag.name, "Container");
         assert_eq!(self.tag.attributes.len(), attribute_len);
         assert_eq!(self.components.len(), component_len);

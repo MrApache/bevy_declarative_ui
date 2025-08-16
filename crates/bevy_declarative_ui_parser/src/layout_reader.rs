@@ -1,8 +1,8 @@
-use std::io::Cursor;
+use crate::XmlLayout;
 use crate::errors::XmlLayoutError;
 use crate::position::{Location, Span};
 use crate::states::{FSMContext, State};
-use crate::XmlLayout;
+use std::io::Cursor;
 
 pub struct LayoutReader<'a> {
     pub(crate) file: String,

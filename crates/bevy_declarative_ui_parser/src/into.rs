@@ -1,6 +1,6 @@
-use crate::attribute::{parse_attributes, Attribute};
+use crate::attribute::{Attribute, parse_attributes};
 use crate::errors::XmlLayoutError;
-use crate::{lexer, LayoutReader};
+use crate::{LayoutReader, lexer};
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Tag {

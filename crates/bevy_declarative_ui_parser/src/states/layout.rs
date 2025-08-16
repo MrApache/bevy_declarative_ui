@@ -1,8 +1,11 @@
 use crate::lexer::Token;
-use crate::{LayoutReader, XmlLayoutError};
 use crate::states::{FSMContext, State};
+use crate::{LayoutReader, XmlLayoutError};
 
-pub(super) fn layout_execute(context: &mut FSMContext, reader: &LayoutReader) -> Result<State, XmlLayoutError> {
+pub(super) fn layout_execute(
+    context: &mut FSMContext,
+    reader: &LayoutReader,
+) -> Result<State, XmlLayoutError> {
     context.create_root_container();
     match &context.token {
         Token::TagStart(tag) => {
@@ -11,6 +14,6 @@ pub(super) fn layout_execute(context: &mut FSMContext, reader: &LayoutReader) ->
             }
             Ok(State::Content)
         }
-        _ => Err(reader.err_missing_layout())
+        _ => Err(reader.err_missing_layout()),
     }
 }

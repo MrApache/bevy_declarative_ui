@@ -1,16 +1,16 @@
 mod file;
 mod module;
-mod structs;
 mod static_field;
+mod structs;
 mod using;
 
-pub use structs::*;
-pub use module::*;
 pub use file::*;
+pub use module::*;
+pub use structs::*;
 
-use std::fmt::{Display, Formatter};
-use itertools::Itertools;
 use bevy_declarative_ui_parser::values::bindings::filter::Filters;
+use itertools::Itertools;
+use std::fmt::{Display, Formatter};
 
 #[derive(Default, Copy, Clone)]
 pub enum Access {
@@ -18,16 +18,16 @@ pub enum Access {
     None,
     Public,
     Super,
-    Crate
+    Crate,
 }
 
 impl Display for Access {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Access::None   => Ok(()),
+            Access::None => Ok(()),
             Access::Public => write!(f, "pub"),
-            Access::Super  => write!(f, "pub(super)"),
-            Access::Crate  => write!(f, "pub(crate)"),
+            Access::Super => write!(f, "pub(super)"),
+            Access::Crate => write!(f, "pub(crate)"),
         }
     }
 }
@@ -37,7 +37,7 @@ pub enum Ownership {
     #[default]
     Move,
     Ref,
-    MutRef
+    MutRef,
 }
 
 impl Display for Ownership {
@@ -45,20 +45,25 @@ impl Display for Ownership {
         match self {
             Ownership::Move => Ok(()),
             Ownership::Ref => write!(f, "&"),
-            Ownership::MutRef => write!(f, "&mut ")
+            Ownership::MutRef => write!(f, "&mut "),
         }
     }
 }
 
 pub struct Argument {
-    name:      String,
-    arg_type:  String,
-    mutable:   bool,
+    name: String,
+    arg_type: String,
+    mutable: bool,
     ownership: Ownership,
 }
 
 impl Argument {
-    pub fn new(name: impl Into<String>, arg_type: impl Into<String>, mutable: bool, ownership: Ownership) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        arg_type: impl Into<String>,
+        mutable: bool,
+        ownership: Ownership,
+    ) -> Self {
         Self {
             name: name.into(),
             arg_type: arg_type.into(),
@@ -93,9 +98,9 @@ impl Display for ReturnValue {
 
 pub struct Function {
     access: Access,
-    name:   String,
-    body:   String,
-    args:   Vec<Argument>,
+    name: String,
+    body: String,
+    args: Vec<Argument>,
     result: Vec<ReturnValue>,
     self_arg: Option<Ownership>,
 }
@@ -104,9 +109,9 @@ impl Function {
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             access: Access::None,
-            name:   name.into(),
-            body:   String::new(),
-            args:   vec![],
+            name: name.into(),
+            body: String::new(),
+            args: vec![],
             result: vec![],
             self_arg: None,
         }
@@ -122,19 +127,31 @@ impl Function {
         self
     }
 
-    pub fn local_mut_arg(&mut self, arg_name: impl Into<String>, arg_type: impl Into<String>) -> &mut Self {
+    pub fn local_mut_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        arg_type: impl Into<String>,
+    ) -> &mut Self {
         let arg_type = format!("Local<{}>", arg_type.into());
         let arg = Argument::new(arg_name.into(), arg_type, true, Ownership::Move);
         self.args.push(arg);
         self
     }
 
-    pub fn query_ref_arg(&mut self, arg_name: impl Into<String>, arg_type: impl Into<String>, filters: &Filters) -> &mut Self {
+    pub fn query_ref_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        arg_type: impl Into<String>,
+        filters: &Filters,
+    ) -> &mut Self {
         let arg_type = if filters.is_empty() {
             format!("Query<&{0}>", arg_type.into())
-        }
-        else {
-            format!("Query<&{0}, {1}>", arg_type.into(), filters.to_filter_bundle())
+        } else {
+            format!(
+                "Query<&{0}, {1}>",
+                arg_type.into(),
+                filters.to_filter_bundle()
+            )
         };
 
         let argument = Argument::new(arg_name, arg_type, false, Ownership::Move);
@@ -142,15 +159,19 @@ impl Function {
         self
     }
 
-    pub fn query_mut_bundle_arg(&mut self, arg_name: impl Into<String>, bundle: Vec<&String>, filters: Filters) -> &mut Self {
+    pub fn query_mut_bundle_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        bundle: Vec<&String>,
+        filters: Filters,
+    ) -> &mut Self {
         if bundle.len() == 1 {
-            return self.query_mut_arg(arg_name, *bundle.get(0).unwrap(), &filters);
+            return self.query_mut_arg(arg_name, *bundle.first().unwrap(), &filters);
         }
         let bundle = bundle.iter().map(|s| format!("&mut {s}")).join(", ");
         let arg_type = if filters.is_empty() {
             format!("Query<({bundle})>")
-        }
-        else {
+        } else {
             format!("Query<({bundle}), {}>", filters.to_filter_bundle())
         };
 
@@ -159,12 +180,20 @@ impl Function {
         self
     }
 
-    pub fn query_mut_arg(&mut self, arg_name: impl Into<String>, arg_type: impl Into<String>, filters: &Filters) -> &mut Self {
+    pub fn query_mut_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        arg_type: impl Into<String>,
+        filters: &Filters,
+    ) -> &mut Self {
         let arg_type = if filters.is_empty() {
             format!("Query<&mut {0}>", arg_type.into())
-        }
-        else {
-            format!("Query<&mut {0}, {1}>", arg_type.into(), filters.to_filter_bundle())
+        } else {
+            format!(
+                "Query<&mut {0}, {1}>",
+                arg_type.into(),
+                filters.to_filter_bundle()
+            )
         };
 
         let argument = Argument::new(arg_name, arg_type, true, Ownership::Move);
@@ -184,11 +213,15 @@ impl Function {
         self
     }
 
-    pub fn single_arg(&mut self, arg_name: impl Into<String>, arg_type: &str, filters: &Filters) -> &mut Self {
+    pub fn single_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        arg_type: &str,
+        filters: &Filters,
+    ) -> &mut Self {
         let arg_type = if filters.is_empty() {
             format!("Single<{arg_type}>")
-        }
-        else {
+        } else {
             let bundle = filters.to_filter_bundle();
             format!("Single<{arg_type}, {bundle}>")
         };
@@ -197,11 +230,15 @@ impl Function {
         self
     }
 
-    pub fn single_ref_arg(&mut self, arg_name: impl Into<String>, arg_type: &str, filters: &Filters) -> &mut Self {
+    pub fn single_ref_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        arg_type: &str,
+        filters: &Filters,
+    ) -> &mut Self {
         let arg_type = if filters.is_empty() {
             format!("Single<&{arg_type}>")
-        }
-        else {
+        } else {
             let bundle = filters.to_filter_bundle();
             format!("Single<&{arg_type}, {bundle}>")
         };
@@ -210,11 +247,15 @@ impl Function {
         self
     }
 
-    pub fn single_mut_arg(&mut self, arg_name: impl Into<String>, arg_type: &str, filters: &Filters) -> &mut Self {
+    pub fn single_mut_arg(
+        &mut self,
+        arg_name: impl Into<String>,
+        arg_type: &str,
+        filters: &Filters,
+    ) -> &mut Self {
         let arg_type = if filters.is_empty() {
             format!("Single<&mut {arg_type}>")
-        }
-        else {
+        } else {
             let bundle = filters.to_filter_bundle();
             format!("Single<&mut {arg_type}, {bundle}>")
         };
@@ -223,7 +264,11 @@ impl Function {
         self
     }
 
-    pub fn resource_arg(&mut self, res_type: impl Into<String>, arg_name: impl Into<String>) -> &mut Self {
+    pub fn resource_arg(
+        &mut self,
+        res_type: impl Into<String>,
+        arg_name: impl Into<String>,
+    ) -> &mut Self {
         let res_type = res_type.into();
         let arg_type = format!("Res<{res_type}>");
         let argument = Argument {
@@ -237,7 +282,11 @@ impl Function {
         self
     }
 
-    pub fn resource_mut(&mut self, res_name: impl Into<String>, arg_name: impl Into<String>) -> &mut Self {
+    pub fn resource_mut(
+        &mut self,
+        res_name: impl Into<String>,
+        arg_name: impl Into<String>,
+    ) -> &mut Self {
         let arg_type = format!("ResMut<{}>", res_name.into());
         let argument = Argument {
             name: arg_name.into(),
@@ -288,22 +337,31 @@ impl Display for Function {
             String::new()
         };
 
-        let args = self.args.iter().map(Argument::to_string).collect::<Vec<_>>().join(", ");
+        let args = self
+            .args
+            .iter()
+            .map(Argument::to_string)
+            .collect::<Vec<_>>()
+            .join(", ");
         let args = if self_arg.is_empty() {
             args
-        }
-        else {
+        } else {
             format!("{self_arg}, {args}")
         };
 
         write!(f, "({args})")?;
 
         if !self.result.is_empty() {
-            let result = self.result.iter().map(ReturnValue::to_string).collect::<Vec<_>>().join(", ");
+            let result = self
+                .result
+                .iter()
+                .map(ReturnValue::to_string)
+                .collect::<Vec<_>>()
+                .join(", ");
             let returns = if self.result.len() > 1 {
-                format!("({})", result)
+                format!("({result})")
             } else {
-                format!("{}", result)
+                result.to_string()
             };
 
             write!(f, " -> {returns}")?;
@@ -315,10 +373,10 @@ impl Display for Function {
 
 #[cfg(test)]
 mod tests {
-    use crate::codegen::{Access, Function};
     use crate::codegen::file::RustFile;
     use crate::codegen::module::Module;
     use crate::codegen::structs::Struct;
+    use crate::codegen::{Access, Function};
 
     #[test]
     fn test() {

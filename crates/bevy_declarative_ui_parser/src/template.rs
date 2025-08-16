@@ -1,20 +1,15 @@
-use crate::{
-    Id,
-    UiNode,
-    XmlTag,
-    errors::XmlLayoutError,
-    layout_reader::LayoutReader,
-    values::AttributeValue,
-};
 use crate::values::TemplateBinding;
+use crate::{
+    Id, UiNode, XmlTag, errors::XmlLayoutError, layout_reader::LayoutReader, values::AttributeValue,
+};
 
 #[derive(Debug)]
 pub struct ItemTemplate {
     ///Always equals Id::Template
-    pub id:     Id,
-    pub owner:  Id,
+    pub id: Id,
+    pub owner: Id,
     pub source: TemplateBinding,
-    pub nodes:  Vec<UiNode>,
+    pub nodes: Vec<UiNode>,
 }
 
 impl ItemTemplate {
@@ -31,8 +26,7 @@ impl ItemTemplate {
                 source,
                 nodes: vec![],
             })
-        }
-        else {
+        } else {
             panic!("Invalid binding input: {:?}", source);
         }
     }

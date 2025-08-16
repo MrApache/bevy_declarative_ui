@@ -498,6 +498,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_declarative_ui_macro"
+version = "0.1.0"
+dependencies = [
+ "bevy_declarative_ui_parser",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "ui_generator",
+]
+
+[[package]]
 name = "bevy_declarative_ui_parser"
 version = "0.1.0"
 dependencies = [
@@ -1991,14 +2002,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "example"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "ui_generator",
-]
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3428,9 +3431,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.95"
+version = "1.0.97"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02b3e5e68a3a1a02aad3ec490a98007cbc13c37cbe84a3cd7b8e406d76e7f778"
+checksum = "d61789d7719defeb74ea5fe81f2fdfdbd28a803847077cecce2ff14e1472f6f1"
 dependencies = [
  "unicode-ident",
 ]

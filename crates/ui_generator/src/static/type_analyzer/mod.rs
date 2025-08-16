@@ -1,6 +1,6 @@
+use serde::Serialize;
 use std::collections::HashMap;
 use syn::ItemStruct;
-use serde::Serialize;
 use syn::visit::Visit;
 
 #[derive(Debug, Serialize)]
@@ -33,22 +33,25 @@ impl<'ast> Visit<'ast> for XmlComponentVisitor {
     fn visit_item_struct(&mut self, node: &'ast ItemStruct) {
         println!("Visit struct");
         let is_xml_component = node.attrs.iter().any(|attr| {
-            attr.path().is_ident("derive") &&
-                attr.parse_args::<syn::Path>()
+            attr.path().is_ident("derive")
+                && attr
+                    .parse_args::<syn::Path>()
                     .map_or(false, |p| p.is_ident("XmlComponent"))
         });
 
         if is_xml_component {
             let fields = match &node.fields {
-                syn::Fields::Named(fields) => fields.named.iter()
-                    .map(|f| {
-                        FieldInfo {
-                            name: f.ident.as_ref().unwrap().to_string(),
-                            type_name: type_to_string(&f.ty),
-                            attributes: f.attrs.iter()
-                                .map(|a| a.path().get_ident().unwrap().to_string())
-                                .collect(),
-                        }
+                syn::Fields::Named(fields) => fields
+                    .named
+                    .iter()
+                    .map(|f| FieldInfo {
+                        name: f.ident.as_ref().unwrap().to_string(),
+                        type_name: type_to_string(&f.ty),
+                        attributes: f
+                            .attrs
+                            .iter()
+                            .map(|a| a.path().get_ident().unwrap().to_string())
+                            .collect(),
                     })
                     .collect(),
                 _ => Vec::new(),
@@ -73,7 +76,9 @@ impl<'ast> Visit<'ast> for XmlComponentVisitor {
                     let struct_name = type_path.path.segments.last().unwrap().ident.to_string();
 
                     // Получаем или создаем запись о структуре
-                    let entry = self.components.entry(struct_name)
+                    let entry = self
+                        .components
+                        .entry(struct_name)
                         .or_insert(StructAnalysis {
                             file: self.file.clone(),
                             module_path: self.current_module.clone(),
@@ -94,11 +99,15 @@ impl<'ast> Visit<'ast> for XmlComponentVisitor {
 
 fn extract_fields(fields: &syn::Fields) -> Vec<FieldInfo> {
     match fields {
-        syn::Fields::Named(fields) => fields.named.iter()
+        syn::Fields::Named(fields) => fields
+            .named
+            .iter()
             .map(|f| FieldInfo {
                 name: f.ident.as_ref().unwrap().to_string(),
                 type_name: type_to_string(&f.ty),
-                attributes: f.attrs.iter()
+                attributes: f
+                    .attrs
+                    .iter()
                     .map(|a| a.path().get_ident().unwrap().to_string())
                     .collect(),
             })
@@ -124,23 +133,24 @@ fn find_struct_in_ast<'a>(items: &'a [syn::ImplItem], path: &syn::Path) -> Optio
 
 fn type_to_string(ty: &syn::Type) -> String {
     match ty {
-        syn::Type::Path(type_path) => {
-            type_path.path.segments.iter()
-                .map(|seg| seg.ident.to_string())
-                .collect::<Vec<_>>()
-                .join("::")
-        }
+        syn::Type::Path(type_path) => type_path
+            .path
+            .segments
+            .iter()
+            .map(|seg| seg.ident.to_string())
+            .collect::<Vec<_>>()
+            .join("::"),
         _ => "unknown".to_string(),
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::r#static::type_analyzer::XmlComponentVisitor;
     use std::collections::HashMap;
     use std::path::Path;
     use syn::visit::Visit;
     use walkdir::WalkDir;
-    use crate::r#static::type_analyzer::XmlComponentVisitor;
 
     #[test]
     fn it_works() {
@@ -151,11 +161,20 @@ mod tests {
         };
 
         // Рекурсивный обход всех Rust-файлов в проекте
-        for entry in WalkDir::new("/home/irisu/bevy_declarative_ui/lexer/src").into_iter().filter_map(|e| e.ok()) {
+        for entry in WalkDir::new("/home/irisu/bevy_declarative_ui/lexer/src")
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
             if entry.path().extension().map_or(false, |ext| ext == "rs") {
                 if let Ok(content) = std::fs::read_to_string(entry.path()) {
                     if let Ok(ast) = syn::parse_file(&content) {
-                        visitor.file = entry.path().file_name().unwrap().to_str().unwrap().to_string();
+                        visitor.file = entry
+                            .path()
+                            .file_name()
+                            .unwrap()
+                            .to_str()
+                            .unwrap()
+                            .to_string();
                         visitor.visit_file(&ast);
                     }
                 }
@@ -170,6 +189,7 @@ mod tests {
         std::fs::write(
             output_path,
             serde_json::to_string_pretty(&visitor.components).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
     }
 }

@@ -1,5 +1,5 @@
-mod error_context;
 mod duplicates;
+mod error_context;
 mod io_error;
 
 pub use duplicates::Duplicates;
@@ -25,7 +25,7 @@ pub enum XmlLayoutError {
     },
     InvalidChar {
         context: ErrorContext,
-        char: char
+        char: char,
     },
 
     EndOfFile {
@@ -76,7 +76,7 @@ pub enum XmlLayoutError {
     DuplicateParam {
         context: Duplicates,
         name: String,
-    }
+    },
 }
 
 impl From<std::io::Error> for XmlLayoutError {
@@ -92,46 +92,87 @@ impl std::fmt::Display for XmlLayoutError {
         match self {
             XmlLayoutError::Io(error) => write!(f, "Could not load file: {error}"),
             XmlLayoutError::Utf8Error(error) => write!(f, "Could not read file: {error}"),
-            XmlLayoutError::UnexpectedChar { context, expected, found, }
-                => write_single_error(format!("Unexpected char: Expected '{expected}', but found '{found}'"), context, f),
+            XmlLayoutError::UnexpectedChar {
+                context,
+                expected,
+                found,
+            } => write_single_error(
+                format!("Unexpected char: Expected '{expected}', but found '{found}'"),
+                context,
+                f,
+            ),
 
-            XmlLayoutError::ExpectedIdentifier { context, found, }
-                => write_single_error(format!("Expected identifier, but found '{found}'"), context, f),
+            XmlLayoutError::ExpectedIdentifier { context, found } => write_single_error(
+                format!("Expected identifier, but found '{found}'"),
+                context,
+                f,
+            ),
 
-            XmlLayoutError::InvalidChar { context, char }
-                => write_single_error(format!("Invalid character: '{char}'"), context, f),
+            XmlLayoutError::InvalidChar { context, char } => {
+                write_single_error(format!("Invalid character: '{char}'"), context, f)
+            }
 
-            XmlLayoutError::EndOfFile { file, location } => write!(f, "[{file}:{location}] Unexpected end of file"),
-            XmlLayoutError::MissingLayout { file } => write!(f, "[{file}:0:0] Missing <Layout> tag"),
+            XmlLayoutError::EndOfFile { file, location } => {
+                write!(f, "[{file}:{location}] Unexpected end of file")
+            }
+            XmlLayoutError::MissingLayout { file } => {
+                write!(f, "[{file}:0:0] Missing <Layout> tag")
+            }
 
-            XmlLayoutError::MissingAttribute { context, attribute }
-                => write_single_error(format!("Missing attribute: {attribute}"), context, f),
+            XmlLayoutError::MissingAttribute { context, attribute } => {
+                write_single_error(format!("Missing attribute: {attribute}"), context, f)
+            }
 
-            XmlLayoutError::EmptyAttribute { context, attribute }
-                => write_single_error(format!("Empty attribute: {attribute}"), context, f),
+            XmlLayoutError::EmptyAttribute { context, attribute } => {
+                write_single_error(format!("Empty attribute: {attribute}"), context, f)
+            }
 
-            XmlLayoutError::UnexpectedTag { context, current, expected }
-                => write_single_error(format!("Unexpected tag. Expected: {expected:?}, but found {current}"), context, f),
+            XmlLayoutError::UnexpectedTag {
+                context,
+                current,
+                expected,
+            } => write_single_error(
+                format!("Unexpected tag. Expected: {expected:?}, but found {current}"),
+                context,
+                f,
+            ),
 
-            XmlLayoutError::MismatchedEndTag { context, current, expected }
-                => write_single_error(format!("Mismatched end tag. Expected {expected}, but found {current}"), context, f),
+            XmlLayoutError::MismatchedEndTag {
+                context,
+                current,
+                expected,
+            } => write_single_error(
+                format!("Mismatched end tag. Expected {expected}, but found {current}"),
+                context,
+                f,
+            ),
 
-            XmlLayoutError::ExceptedValue { context }
-                => write_single_error("Expected value", context, f),
+            XmlLayoutError::ExceptedValue { context } => {
+                write_single_error("Expected value", context, f)
+            }
 
-            XmlLayoutError::MissingParameter { context, name }
-                => write_single_error(format!("Missing parameter: {name}"), context, f),
+            XmlLayoutError::MissingParameter { context, name } => {
+                write_single_error(format!("Missing parameter: {name}"), context, f)
+            }
 
-            XmlLayoutError::UnknownBindingType { context, name }
-                => write_single_error(format!("Unknown binding type: {name}"), context, f),
+            XmlLayoutError::UnknownBindingType { context, name } => {
+                write_single_error(format!("Unknown binding type: {name}"), context, f)
+            }
 
-            XmlLayoutError::DuplicateParam { context, name }
-                => write_multiple_error(format!("Parameter '{name}' specified more than once"), context, f)
+            XmlLayoutError::DuplicateParam { context, name } => write_multiple_error(
+                format!("Parameter '{name}' specified more than once"),
+                context,
+                f,
+            ),
         }
     }
 }
 
-fn write_single_error(message: impl Into<String>, context: &ErrorContext, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+fn write_single_error(
+    message: impl Into<String>,
+    context: &ErrorContext,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
     let file = &context.file;
     let location = &context.location;
     let error = &context.error;
@@ -149,7 +190,11 @@ fn write_single_error(message: impl Into<String>, context: &ErrorContext, f: &mu
     Ok(())
 }
 
-fn write_multiple_error(message: impl Into<String>, context: &Duplicates, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+fn write_multiple_error(
+    message: impl Into<String>,
+    context: &Duplicates,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
     let file = &context.file;
     let location = &context.location;
 
