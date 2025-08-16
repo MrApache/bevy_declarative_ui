@@ -431,17 +431,28 @@
     </xs:sequence>
   </xs:group>
 
+  <xs:complexType name="ContainerType">
+    <xs:sequence>
+      <xs:group ref="components"/>
+      <xs:element name="ItemTemplate" type="ItemTemplateType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="ItemTemplateType">
+    <xs:sequence>
+      <xs:element name="Container" type="ContainerType" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="source" type="ExprString" use="required"/>
+  </xs:complexType>
+
   <xs:element name="Layout">
     <xs:complexType>
       <xs:sequence>
         <xs:element name="Use" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
-        <xs:element name="Container" minOccurs="0" maxOccurs="unbounded">
-          <xs:complexType>
-            <xs:group ref="components"/>
-            <xs:attribute name="id" type="xs:string" use="optional"/>
-          </xs:complexType>
-        </xs:element>
+        <xs:element name="Container" type="ContainerType" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
   </xs:element>
+
 </xs:schema>
