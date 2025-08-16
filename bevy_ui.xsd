@@ -1,0 +1,447 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="bevy"
+           xmlns="bevy"
+           elementFormDefault="qualified">
+
+  <xs:simpleType name="ExprString">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\{.*\}"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+
+  <xs:simpleType name="Display">
+    <xs:annotation>
+      <xs:documentation>
+        https://docs.rs/bevy/latest/bevy/prelude/enum.Display.html
+        Available values:
+        Flex
+        Grid
+        Block
+        None
+      </xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Flex"/>
+      <xs:enumeration value="Grid"/>
+      <xs:enumeration value="Block"/>
+      <xs:enumeration value="None"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="DisplayOrExpr">
+    <xs:union memberTypes="Display ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="BoxSizing">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="BorderBox"/>
+      <xs:enumeration value="ContentBox"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="BoxSizingOrExpr">
+    <xs:union memberTypes="BoxSizing ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="PositionType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Relative"/>
+      <xs:enumeration value="Absolute"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PositionTypeOrExpr">
+    <xs:union memberTypes="PositionType ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="OverflowAxis">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Visible"/>
+      <xs:enumeration value="Clip"/>
+      <xs:enumeration value="Hidden"/>
+      <xs:enumeration value="Scroll"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OverflowAxisOrExpr">
+    <xs:union memberTypes="OverflowAxis ExprString"/>
+  </xs:simpleType>
+
+  <xs:complexType name="Overflow">
+    <xs:sequence>
+      <xs:element name="x" type="OverflowAxis"/>
+      <xs:element name="y" type="OverflowAxis"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="OverflowOrExpr">
+    <xs:union memberTypes="Overflow ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="OverflowClipBox">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ContentBox"/>
+      <xs:enumeration value="PaddingBox"/>
+      <xs:enumeration value="BorderBox"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OverflowClipBoxOrExpr">
+    <xs:union memberTypes="OverflowClipBox ExprString"/>
+  </xs:simpleType>
+
+  <xs:complexType name="OverflowClipMargin">
+    <xs:sequence>
+      <xs:element name="visual_box" type="OverflowClipMargin"/>
+      <xs:element name="margin" type="xs:float"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="OverflowClipMarginOrExpr">
+    <xs:union memberTypes="OverflowClipMargin ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValAuto">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Auto"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValPx">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d+(\.\d+)?px"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValPercent">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d+(\.\d+)?%"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValVw">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d+(\.\d+)?vw"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValVh">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d+(\.\d+)?vh"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValVmin">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d+(\.\d+)?vmin"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValVmax">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\d+(\.\d+)?vmax"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="Val">
+    <xs:union memberTypes="ValAuto ValPx ValPercent ValVw ValVh ValVmin ValVmax"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="ValOrExpr">
+    <xs:union memberTypes="Val ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="OptionNone">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FloatValueOrNoneOrExpr">
+    <xs:union memberTypes="xs:float OptionNone ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="JustifyContent">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Default"/>
+      <xs:enumeration value="Start"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="FlexStart"/>
+      <xs:enumeration value="FlexEnd"/>
+      <xs:enumeration value="Center"/>
+      <xs:enumeration value="Stretch"/>
+      <xs:enumeration value="SpaceBetween"/>
+      <xs:enumeration value="SpaceEvenly"/>
+      <xs:enumeration value="SpaceAround"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="JustifyContentOrExpr">
+    <xs:union memberTypes="JustifyContent ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="AlignContent">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Default"/>
+      <xs:enumeration value="Start"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="FlexStart"/>
+      <xs:enumeration value="FlexEnd"/>
+      <xs:enumeration value="Center"/>
+      <xs:enumeration value="Stretch"/>
+      <xs:enumeration value="SpaceBetween"/>
+      <xs:enumeration value="SpaceEvenly"/>
+      <xs:enumeration value="SpaceAround"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AlignContentOrExpr">
+    <xs:union memberTypes="AlignContent ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="AlignSelf">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Auto"/>
+      <xs:enumeration value="Start"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="FlexStart"/>
+      <xs:enumeration value="FlexEnd"/>
+      <xs:enumeration value="Center"/>
+      <xs:enumeration value="Baseline"/>
+      <xs:enumeration value="Stretch"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AlignSelfOrExpr">
+    <xs:union memberTypes="AlignSelf ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="JustifyItems">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Default"/>
+      <xs:enumeration value="Start"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="Center"/>
+      <xs:enumeration value="Baseline"/>
+      <xs:enumeration value="Stretch"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="JustifyItemsOrExpr">
+    <xs:union memberTypes="JustifyItems ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="AlignItems">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Default"/>
+      <xs:enumeration value="Start"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="FlexStart"/>
+      <xs:enumeration value="FlexEnd"/>
+      <xs:enumeration value="Center"/>
+      <xs:enumeration value="Baseline"/>
+      <xs:enumeration value="Stretch"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="AlignItemsOrExpr">
+    <xs:union memberTypes="AlignItems ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="JustifySelf">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Auto"/>
+      <xs:enumeration value="Start"/>
+      <xs:enumeration value="End"/>
+      <xs:enumeration value="Center"/>
+      <xs:enumeration value="Baseline"/>
+      <xs:enumeration value="Stretch"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="JustifySelfOrExpr">
+    <xs:union memberTypes="JustifySelf ExprString"/>
+  </xs:simpleType>
+
+  <xs:complexType name="UiRect">
+    <xs:attribute name="left" type="ValOrExpr"/>
+    <xs:attribute name="right" type="ValOrExpr"/>
+    <xs:attribute name="top" type="ValOrExpr"/>
+    <xs:attribute name="bottom" type="ValOrExpr"/>
+  </xs:complexType>
+
+  <xs:simpleType name="UiRectOrExpr">
+    <xs:union memberTypes="UiRect ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="FlexDirection">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Row"/>
+      <xs:enumeration value="Column"/>
+      <xs:enumeration value="RowReverse"/>
+      <xs:enumeration value="ColumnReverse"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FlexDirectionOrExpr">
+    <xs:union memberTypes="FlexDirection ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="FlexWrap">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NoWrap"/>
+      <xs:enumeration value="Wrap"/>
+      <xs:enumeration value="WrapReverse"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FlexWrapOrExpr">
+    <xs:union memberTypes="FlexWrap ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="FloatOrExpr">
+    <xs:union memberTypes="xs:float ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="GridAutoFlow">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Row"/>
+      <xs:enumeration value="Column"/>
+      <xs:enumeration value="RowDense"/>
+      <xs:enumeration value="ColumnDense"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="GridAutoFlowOrExpr">
+    <xs:union memberTypes="GridAutoFlow ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="StringOrExpr">
+    <xs:union memberTypes="xs:string ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="FontSmoothing">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None"/>
+      <xs:enumeration value="AntiAliased"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="FontSmoothingOrExpr">
+    <xs:union memberTypes="FontSmoothing ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="LineHeightPx">
+    <xs:restriction>
+      <xs:pattern value="\d+(\.\d+)?px"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="LineHeightRelative">
+    <xs:restriction>
+      <xs:pattern value="\d+(\.\d+)?rl"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="LineHeightOrExpr">
+    <xs:union memberTypes="LineHeightPx LineHeightRelative ExprString"/>
+  </xs:simpleType>
+
+  <xs:simpleType name="ColorOrExpr">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="(srgba|lrgba|hsla|hsva|hwba|laba|lcha|oklaba|oklcha|xyza)\(\s*([0-9]+(\.[0-9]+)?\s*,\s*){3}[0-9]+(\.[0-9]+)?\s*\)"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:group name="components">
+    <xs:sequence>
+
+      <xs:element name="Node" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="display" type="DisplayOrExpr"/>
+          <xs:attribute name="box_sizing" type="BoxSizingOrExpr"/>
+          <xs:attribute name="position_type" type="PositionTypeOrExpr"/>
+          <xs:attribute name="overflow" type="OverflowOrExpr"/>
+          <xs:attribute name="overflow_clip_margin" type="OverflowClipMarginOrExpr"/>
+          <xs:attribute name="left" type="ValOrExpr"/>
+          <xs:attribute name="right" type="ValOrExpr"/>
+          <xs:attribute name="top" type="ValOrExpr"/>
+          <xs:attribute name="bottom" type="ValOrExpr"/>
+          <xs:attribute name="width" type="ValOrExpr"/>
+          <xs:attribute name="height" type="ValOrExpr"/>
+          <xs:attribute name="min_width" type="ValOrExpr"/>
+          <xs:attribute name="min_height" type="ValOrExpr"/>
+          <xs:attribute name="max_width" type="ValOrExpr"/>
+          <xs:attribute name="max_height" type="ValOrExpr"/>
+          <xs:attribute name="aspect_ratio" type="FloatValueOrNoneOrExpr"/>
+          <xs:attribute name="align_items" type="AlignItemsOrExpr"/>
+          <xs:attribute name="justify_items" type="JustifyItemsOrExpr"/>
+          <xs:attribute name="align_self" type="AlignSelfOrExpr"/>
+          <xs:attribute name="justify_self" type="JustifySelfOrExpr"/>
+          <xs:attribute name="align_content" type="AlignContentOrExpr"/>
+          <xs:attribute name="justify_content" type="JustifyContentOrExpr"/>
+
+          <xs:attribute name="margin" type="UiRectOrExpr"/>
+          <xs:attribute name="padding" type="UiRectOrExpr"/>
+          <xs:attribute name="border" type="UiRectOrExpr"/>
+
+          <xs:attribute name="flex_direction" type="FlexDirectionOrExpr"/>
+          <xs:attribute name="flex_wrap" type="FlexWrapOrExpr"/>
+          <xs:attribute name="flex_grow" type="FloatOrExpr"/>
+          <xs:attribute name="flex_shrink" type="FloatOrExpr"/>
+          <xs:attribute name="flex_basis" type="ValOrExpr"/>
+          <xs:attribute name="row_gap" type="ValOrExpr"/>
+          <xs:attribute name="column_gap" type="ValOrExpr"/>
+
+          <xs:attribute name="grid_auto_flow" type="GridAutoFlowOrExpr"/>
+<!--
+          pub grid_auto_flow: GridAutoFlow,
+          pub grid_template_rows: Vec<RepeatedGridTrack>,
+          pub grid_template_columns: Vec<RepeatedGridTrack>,
+          pub grid_auto_rows: Vec<GridTrack>,
+          pub grid_auto_columns: Vec<GridTrack>,
+          pub grid_row: GridPlacement,
+          pub grid_column: GridPlacement,
+-->
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="Text" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="self" type="StringOrExpr"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="TextColor" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="self" type="ColorOrExpr"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="TextFont" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="font" type="StringOrExpr"/>
+          <xs:attribute name="font_size" type="FloatOrExpr"/>
+          <xs:attribute name="line_height" type="LineHeightOrExpr"/>
+          <xs:attribute name="font_smoothing" type="FontSmoothingOrExpr"/>
+        </xs:complexType>
+      </xs:element>
+
+    </xs:sequence>
+  </xs:group>
+
+  <xs:element name="Layout">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Use" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="Container" minOccurs="0" maxOccurs="unbounded">
+          <xs:complexType>
+            <xs:group ref="components"/>
+            <xs:attribute name="id" type="xs:string" use="optional"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
