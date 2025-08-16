@@ -3,8 +3,9 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.dependencies]
-bevy_declarative_ui_parser = {path = "crates/bevy_declarative_ui_parser" }
+bevy_declarative_ui_parser = { path = "crates/bevy_declarative_ui_parser" }
 ui_generator = { path = "crates/ui_generator" }
+bevy_declarative_ui_macro = { path = "crates/bevy_declarative_ui_macro" }
 
 thiserror = "2.0.14"
 regex = "1.11.1"
