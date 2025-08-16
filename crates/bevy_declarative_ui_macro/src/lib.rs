@@ -38,7 +38,7 @@ pub fn ui_layout(attr: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #vis struct #struct_name;
         
-        #vis impl #plugin_type for #struct_name {
+        impl #plugin_type for #struct_name {
             fn build(&self, app: &mut #app_type) {
 
             }
