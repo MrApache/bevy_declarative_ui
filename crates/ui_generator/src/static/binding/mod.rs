@@ -2,30 +2,24 @@ mod component;
 mod resource;
 
 use std::collections::HashMap;
+use bevy_declarative_ui_parser::utils::GetOrInsertEmpty;
 use crate::codegen::Module;
 use crate::r#static::required::RequiredBinding;
-use crate::utils::GetOrInsertEmpty;
-use bevy_declarative_ui_parser::{
-    values::{
-        BindingMode,
-        BaseParams,
-        Binding,
-        Filter,
-        Filters
-    },
-};
+use bevy_declarative_ui_parser::values::bindings::{BindingKind, BindingMode};
+use bevy_declarative_ui_parser::values::bindings::filter::{Filter, Filters};
+use bevy_declarative_ui_parser::values::bindings::params::BaseParams;
 
 fn create_observers(bindings: &HashMap<String, Vec<RequiredBinding>>) -> ObserverCollection {
     let mut collection = ObserverCollection::default();
     bindings.iter().for_each(|(id, bindings)| {
         bindings.iter().for_each(|binding| {
             match &binding.inner {
-                Binding::Component { params } => {
-                    let observer = create_observer(&binding, &params.base, id.clone());
+                BindingKind::Component => {
+                    let observer = create_observer(&binding, &binding..base, id.clone());
                     let (list, _) = collection.components.get_or_insert(&params.base.target, ||init_cmp_hash_map(&params.filters)).get_mut(&params.base.mode).unwrap();
                     list.push(observer);
                 },
-                Binding::Resource { params } => {
+                BindingKind::Resource => {
                     let observer = create_observer(&binding, &params, id.clone());
                     collection.resources.get_or_insert(&params.target, init_res_hash_map).get_mut(&params.mode).unwrap().push(observer);
                 }

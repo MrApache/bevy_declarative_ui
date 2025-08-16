@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use bevy_declarative_ui_parser::values::{Binding, Filters};
+use bevy_declarative_ui_parser::values::bindings::BindingKind;
+use bevy_declarative_ui_parser::values::bindings::filter::Filters;
 
 #[derive(Default)]
 pub struct Required {
@@ -19,7 +20,7 @@ pub struct Required {
 }
 
 pub struct RequiredBinding {
-    pub inner:      Binding,
+    pub inner:      BindingKind,
     pub component:  String,
     pub field_name: String,
 }

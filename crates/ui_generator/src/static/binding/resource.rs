@@ -1,4 +1,4 @@
-use bevy_declarative_ui_parser::values::Filter;
+use bevy_declarative_ui_parser::values::bindings::filter::Filter;
 use crate::codegen::{Access, Function, Struct};
 use crate::r#static::binding::{prepare_filters, Observer};
 use crate::utils::ToSnakeCase;

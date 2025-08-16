@@ -14,7 +14,7 @@ pub use layout_reader::LayoutReader;
 pub use template::ItemTemplate;
 
 use std::collections::HashSet;
-use crate::errors::XmlLayoutError;
+pub use crate::errors::XmlLayoutError;
 use crate::into::Tag;
 
 type XmlTag = lexer::Tag;

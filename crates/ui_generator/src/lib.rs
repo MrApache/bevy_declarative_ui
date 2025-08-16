@@ -52,7 +52,7 @@ pub fn generate_modules(assets_dir: PathBuf, output_dir: &str) -> Vec<PathBuf> {
 
         let content = fs::read_to_string(&path).unwrap();
         let mut reader = LayoutReader::new(&content, path.to_str().unwrap());
-        let result = reader.read();
+        let result = reader.parse();
         if result.is_err() {
             panic!("{}", result.unwrap_err());
             //continue;

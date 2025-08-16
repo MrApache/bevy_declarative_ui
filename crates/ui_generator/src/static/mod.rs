@@ -16,7 +16,7 @@ mod template_function;
 #[allow(dead_code)]
 pub fn generate_file_content(path: &str, xml: &str) -> String {
     let mut reader = LayoutReader::new(&xml, path);
-    let mut result = reader.read().unwrap();
+    let mut result = reader.parse().unwrap();
 
     let mut required = Required::default();
     let mut spawn_function = print_spawn_function(&mut required, &result.root_nodes);

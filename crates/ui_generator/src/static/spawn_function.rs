@@ -1,12 +1,9 @@
 use std::sync::atomic::AtomicU64;
 use bevy_declarative_ui_parser::{Id, UiNode};
 use bevy_declarative_ui_parser::values::AttributeValue;
-use bevy_declarative_ui_parser::values::Binding;
-use bevy_declarative_ui_parser::values::BindingMode;
 use bevy_declarative_ui_parser::into::Tag;
 use crate::codegen::{Access, Function};
 use crate::r#static::required::{Required, RequiredBinding};
-use crate::utils::GetOrInsertEmpty;
 
 pub fn print_spawn_function(required: &mut Required, nodes: &[UiNode]) -> Function {
     let mut function = Function::new("spawn_document");

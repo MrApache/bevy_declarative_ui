@@ -3,6 +3,7 @@ members = ["crates/*"]
 resolver = "2"
 
 [workspace.dependencies]
+bevy_declarative_ui_parser = {path = "crates/bevy_declarative_ui_parser" }
 
 thiserror = "2.0.14"
 regex = "1.11.1"

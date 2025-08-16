@@ -1,20 +1,22 @@
 use std::collections::HashMap;
 use itertools::Itertools;
 use bevy_declarative_ui_parser::{ItemTemplate, UiNode};
-use bevy_declarative_ui_parser::values::{AttributeValue, Binding, Filter, Filters};
+use bevy_declarative_ui_parser::utils::GetOrInsertEmpty;
+use bevy_declarative_ui_parser::values::{AttributeValue, TemplateBinding};
+use bevy_declarative_ui_parser::values::bindings::filter::{Filter, Filters};
 use crate::codegen::{Argument, Function, Module, Ownership};
 use crate::r#static::required::Required;
-use crate::utils::{GetOrInsertEmpty, ToSnakeCase};
+use crate::utils::{ToSnakeCase};
 
-fn get_access_to_target(function: &mut Function, binding: &Binding) {
-    match binding {
-        Binding::Resource { params } => {
-            function.resource_arg(&params.target, "target");
-            function.push_line_to_body(format!("let target = target.{};", params.path));
+fn get_access_to_target(function: &mut Function, binding: &TemplateBinding) {
+    match binding{
+        TemplateBinding::Resource(binding) => {
+            function.resource_arg(&binding.base_params.target, "target");
+            function.push_line_to_body(format!("let target = target.{};", binding.base_params.path));
         }
-        Binding::Component { params } => {
-            function.single_ref_arg("target", &params.base.target, &params.filters);
-            function.push_line_to_body(format!("let target = target.{};", params.base.path));
+        TemplateBinding::Component(binding) => {
+            function.single_ref_arg("target", &binding.base_params.target, &binding.additional_params.filters);
+            function.push_line_to_body(format!("let target = target.{};", binding.base_params.path));
         }
     }
 }
@@ -120,16 +122,16 @@ fn template_binding(template: &ItemTemplate) -> Function {
     let mut function: Function = Function::new(format!("{}_binding", template.id.to_string().to_snake_case()));
 
     match &template.source {
-        Binding::Resource { params } => {
-            function.resource_arg(&params.target, "target");
+        TemplateBinding::Resource(binding) => {
+            function.resource_arg(&binding.base_params.target, "target");
             function.push_line_to_body("if !target.is_changed() {{\n return;\n}}");
-            function.push_line_to_body(format!("let target = &target.{};", &params.path));
+            function.push_line_to_body(format!("let target = &target.{};", &binding.base_params.path));
         },
-        Binding::Component { params } => {
-            let mut filters = params.filters.clone();
-            let filters = filters.with(Filter::Changed(params.base.target.clone()));
-            function.single_ref_arg("target", &params.base.target, &filters);
-            function.push_line_to_body(format!("let target = &target.{};", &params.base.path));
+        TemplateBinding::Component(binding) => {
+            let mut filters = binding.additional_params.filters.clone();
+            let filters = filters.with(Filter::Changed(binding.base_params.target.clone()));
+            function.single_ref_arg("target", &binding.base_params.target, &filters);
+            function.push_line_to_body(format!("let target = &target.{};", &binding.base_params.path));
         }
     }
 
@@ -200,7 +202,7 @@ fn create_observers<'a>(
                     let observers: &mut Vec<Observer> = components.get_or_insert_empty(component.name.clone());
                     observers.push(Observer {
                         field: &attribute.name,
-                        path: &item.path,
+                        path: &item.base_params.path,
                     });
                 }
             }

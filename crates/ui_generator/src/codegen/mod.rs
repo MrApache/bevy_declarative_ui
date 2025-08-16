@@ -10,7 +10,7 @@ pub use file::*;
 
 use std::fmt::{Display, Formatter};
 use itertools::Itertools;
-use bevy_declarative_ui_parser::values::Filters;
+use bevy_declarative_ui_parser::values::bindings::filter::Filters;
 
 #[derive(Default, Copy, Clone)]
 pub enum Access {
