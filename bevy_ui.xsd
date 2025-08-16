@@ -9,18 +9,13 @@
     </xs:restriction>
   </xs:simpleType>
 
-
   <xs:simpleType name="Display">
     <xs:annotation>
-      <xs:documentation>
-        https://docs.rs/bevy/latest/bevy/prelude/enum.Display.html
-        Available values:
-        Flex
-        Grid
-        Block
-        None
-      </xs:documentation>
+      <xs:appinfo>
+        <path>bevy::prelude::Display</path>
+      </xs:appinfo>
     </xs:annotation>
+
     <xs:restriction base="xs:string">
       <xs:enumeration value="Flex"/>
       <xs:enumeration value="Grid"/>
@@ -34,6 +29,12 @@
   </xs:simpleType>
 
   <xs:simpleType name="BoxSizing">
+    <xs:annotation>
+      <xs:appinfo>
+        <path>bevy::prelude::BoxSizing</path>
+      </xs:appinfo>
+    </xs:annotation>
+
     <xs:restriction base="xs:string">
       <xs:enumeration value="BorderBox"/>
       <xs:enumeration value="ContentBox"/>
@@ -45,6 +46,11 @@
   </xs:simpleType>
 
   <xs:simpleType name="PositionType">
+    <xs:annotation>
+      <xs:appinfo>
+        <path>bevy::prelude::PositionType</path>
+      </xs:appinfo>
+    </xs:annotation>
     <xs:restriction base="xs:string">
       <xs:enumeration value="Relative"/>
       <xs:enumeration value="Absolute"/>
@@ -56,6 +62,11 @@
   </xs:simpleType>
 
   <xs:simpleType name="OverflowAxis">
+    <xs:annotation>
+      <xs:appinfo>
+        <path>bevy::prelude::OverflowAxis</path>
+      </xs:appinfo>
+    </xs:annotation>
     <xs:restriction base="xs:string">
       <xs:enumeration value="Visible"/>
       <xs:enumeration value="Clip"/>
@@ -68,17 +79,6 @@
     <xs:union memberTypes="OverflowAxis ExprString"/>
   </xs:simpleType>
 
-  <xs:complexType name="Overflow">
-    <xs:sequence>
-      <xs:element name="x" type="OverflowAxis"/>
-      <xs:element name="y" type="OverflowAxis"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:simpleType name="OverflowOrExpr">
-    <xs:union memberTypes="Overflow ExprString"/>
-  </xs:simpleType>
-
   <xs:simpleType name="OverflowClipBox">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ContentBox"/>
@@ -89,17 +89,6 @@
 
   <xs:simpleType name="OverflowClipBoxOrExpr">
     <xs:union memberTypes="OverflowClipBox ExprString"/>
-  </xs:simpleType>
-
-  <xs:complexType name="OverflowClipMargin">
-    <xs:sequence>
-      <xs:element name="visual_box" type="OverflowClipMargin"/>
-      <xs:element name="margin" type="xs:float"/>
-    </xs:sequence>
-  </xs:complexType>
-
-  <xs:simpleType name="OverflowClipMarginOrExpr">
-    <xs:union memberTypes="OverflowClipMargin ExprString"/>
   </xs:simpleType>
 
   <xs:simpleType name="ValAuto">
@@ -264,15 +253,12 @@
     <xs:union memberTypes="JustifySelf ExprString"/>
   </xs:simpleType>
 
-  <xs:complexType name="UiRect">
-    <xs:attribute name="left" type="ValOrExpr"/>
-    <xs:attribute name="right" type="ValOrExpr"/>
-    <xs:attribute name="top" type="ValOrExpr"/>
-    <xs:attribute name="bottom" type="ValOrExpr"/>
-  </xs:complexType>
-
   <xs:simpleType name="UiRectOrExpr">
-    <xs:union memberTypes="UiRect ExprString"/>
+    <xs:restriction base="xs:string">
+      <xs:pattern value="(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})"/>
+      <xs:pattern value="\(\s*(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})\s*,\s*(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})\s*\)"/>
+      <xs:pattern value="\(\s*(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})\s*,\s*(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})\s*,\s*(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})\s*,\s*(Auto|\d+(\.\d+)?(px|%|vw|vh|vmin|vmax)|\{.*\})\s*\)"/>
+    </xs:restriction>
   </xs:simpleType>
 
   <xs:simpleType name="FlexDirection">
@@ -333,13 +319,13 @@
   </xs:simpleType>
 
   <xs:simpleType name="LineHeightPx">
-    <xs:restriction>
+    <xs:restriction base="xs:string">
       <xs:pattern value="\d+(\.\d+)?px"/>
     </xs:restriction>
   </xs:simpleType>
 
   <xs:simpleType name="LineHeightRelative">
-    <xs:restriction>
+    <xs:restriction base="xs:string">
       <xs:pattern value="\d+(\.\d+)?rl"/>
     </xs:restriction>
   </xs:simpleType>
@@ -357,13 +343,50 @@
   <xs:group name="components">
     <xs:sequence>
 
-      <xs:element name="Node" minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Node" minOccurs="0">
+        <xs:annotation>
+          <xs:appinfo>
+            <path>bevy::prelude::Node</path>
+          </xs:appinfo>
+        </xs:annotation>
         <xs:complexType>
+
           <xs:attribute name="display" type="DisplayOrExpr"/>
           <xs:attribute name="box_sizing" type="BoxSizingOrExpr"/>
           <xs:attribute name="position_type" type="PositionTypeOrExpr"/>
-          <xs:attribute name="overflow" type="OverflowOrExpr"/>
-          <xs:attribute name="overflow_clip_margin" type="OverflowClipMarginOrExpr"/>
+
+          <xs:attribute name="overflow_x" type="OverflowAxisOrExpr">
+            <xs:annotation>
+              <xs:appinfo>
+                <field>overflow.x</field>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:attribute>
+
+          <xs:attribute name="overflow_y" type="OverflowAxisOrExpr">
+            <xs:annotation>
+              <xs:appinfo>
+                <field>overflow.y</field>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:attribute>
+
+          <xs:attribute name="overflow_clip_margin" type="FloatOrExpr">
+            <xs:annotation>
+              <xs:appinfo>
+                <field>overflow_clip_margin.margin</field>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:attribute>
+
+          <xs:attribute name="overflow_clip_box" type="OverflowClipBoxOrExpr">
+            <xs:annotation>
+              <xs:appinfo>
+                <field>overflow_clip_margin.margin</field>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:attribute>
+
           <xs:attribute name="left" type="ValOrExpr"/>
           <xs:attribute name="right" type="ValOrExpr"/>
           <xs:attribute name="top" type="ValOrExpr"/>
@@ -396,6 +419,7 @@
 
           <xs:attribute name="grid_auto_flow" type="GridAutoFlowOrExpr"/>
 <!--
+          TODO
           pub grid_auto_flow: GridAutoFlow,
           pub grid_template_rows: Vec<RepeatedGridTrack>,
           pub grid_template_columns: Vec<RepeatedGridTrack>,
@@ -407,19 +431,25 @@
         </xs:complexType>
       </xs:element>
 
-      <xs:element name="Text" minOccurs="0" maxOccurs="unbounded">
-        <xs:complexType>
-          <xs:attribute name="self" type="StringOrExpr"/>
-        </xs:complexType>
-      </xs:element>
-
-      <xs:element name="TextColor" minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="BackgroundColor" minOccurs="0">
         <xs:complexType>
           <xs:attribute name="self" type="ColorOrExpr"/>
         </xs:complexType>
       </xs:element>
 
-      <xs:element name="TextFont" minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Text" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="self" type="StringOrExpr"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="TextColor" minOccurs="0">
+        <xs:complexType>
+          <xs:attribute name="self" type="ColorOrExpr"/>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element name="TextFont" minOccurs="0">
         <xs:complexType>
           <xs:attribute name="font" type="StringOrExpr"/>
           <xs:attribute name="font_size" type="FloatOrExpr"/>
@@ -449,7 +479,6 @@
   <xs:element name="Layout">
     <xs:complexType>
       <xs:sequence>
-        <xs:element name="Use" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
         <xs:element name="Container" type="ContainerType" minOccurs="0" maxOccurs="unbounded"/>
       </xs:sequence>
     </xs:complexType>
