@@ -4,4 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+xml_validator.workspace = true
+xsd-parser = "1.2.0"
 bevy_declarative_ui_macro.workspace = true
+bevy.workspace = true
+url = "2.5.4"

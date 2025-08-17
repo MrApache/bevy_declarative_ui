@@ -6,6 +6,7 @@ resolver = "2"
 bevy_declarative_ui_parser = { path = "crates/bevy_declarative_ui_parser" }
 ui_generator = { path = "crates/ui_generator" }
 bevy_declarative_ui_macro = { path = "crates/bevy_declarative_ui_macro" }
+xml_validator = { path = "crates/xml_validator" }
 
 thiserror = "2.0.14"
 regex = "1.11.1"
@@ -24,3 +25,4 @@ quote = "1.0.40"
 walkdir = "2.5.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
+enum_dispatch = "0.3.13"

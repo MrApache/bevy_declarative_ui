@@ -1,0 +1,9 @@
+<Layout xmlns="bevy"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="bevy https://raw.githubusercontent.com/MrApache/bevy_declarative_ui/refs/heads/main/bevy_ui.xsd">
+
+    <Container>
+        <TextColor self="srgba(1.0, 0.5, 0.2, 1.0)"/>
+    </Container>
+
+</Layout>

@@ -24,12 +24,11 @@ pub fn ui_layout(attr: TokenStream, item: TokenStream) -> TokenStream {
     let plugin_type: Type = parse_str("bevy::prelude::Plugin").unwrap();
     let app_type: Type = parse_str("bevy::app::App").unwrap();
 
-
     let relative_path = parse_macro_input!(attr as LitStr).value();
 
     let absolute_path = try_unwrap!(to_absolute_path(&relative_path));
     let file_content  = try_unwrap!(std::fs::read_to_string(&absolute_path));
-    let parsed_layout = try_unwrap!(LayoutReader::new(&file_content, &absolute_path).parse());
+    let _parsed_layout = try_unwrap!(LayoutReader::new(&file_content, &absolute_path).parse());
 
     let input = parse_macro_input!(item as DeriveInput);
     let struct_name = input.ident;

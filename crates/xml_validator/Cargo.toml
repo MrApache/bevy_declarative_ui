@@ -1,0 +1,8 @@
+[package]
+name = "xml_validator"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+regex.workspace = true
+enum_dispatch.workspace = true
