@@ -1,0 +1,7 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="base" targetNamespace="base" elementFormDefault="qualified">
+  <xs:simpleType name="ExprString">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="\{.*\}"/>
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>
